@@ -1,0 +1,6 @@
+{
+  "name": "DentalCare Pro",
+  "description": "Comprehensive clinical dental workspace and patient portal featuring interactive dental charts, patient management, and clinic status.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
