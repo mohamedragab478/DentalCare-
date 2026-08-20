@@ -59,7 +59,23 @@ export interface ClinicRoom {
   currentPatient?: string;
 }
 
+export interface DoctorProfile {
+  id: string;
+  name: string;
+  specialty: string;
+  avatar: string;
+  assignedClinic: string;
+  phone: string;
+  email: string;
+  consultationFee: number;
+  bio?: string;
+}
+
 export type AppView = 
+  | 'auth-gateway'
+  | 'doctor-login'
+  | 'patient-login'
+  | 'patient-signup'
   | 'doctor-dashboard'
   | 'doctor-patients'
   | 'doctor-patient-profile'
@@ -67,7 +83,6 @@ export type AppView =
   | 'doctor-clinics'
   | 'doctor-settings'
   | 'patient-dashboard'
-  | 'patient-profile'
-  | 'doctor-login'
-  | 'patient-login'
-  | 'patient-signup';
+  | 'patient-chart'
+  | 'patient-visits'
+  | 'patient-profile';
