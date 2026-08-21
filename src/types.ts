@@ -1,9 +1,11 @@
-export type ToothStatus = 'extraction' | 'filling' | 'root-canal' | 'crown' | 'implant' | 'none';
+export type ToothStatus = 'extraction' | 'filling' | 'root-canal' | 'crown' | 'implant' | 'bridge' | 'other' | 'none';
 
 export interface ToothRecord {
   id: number; // FDI notation e.g. 11, 12, 18, 21, 26, 31, 41, etc.
   name?: string;
   status: ToothStatus;
+  customProcedureName?: string; // For 'other' procedure
+  bridgeSpan?: number[]; // FDI numbers of connected adjacent teeth for 'bridge'
   lastTreatmentDate?: string;
   notes?: string;
 }
@@ -33,7 +35,7 @@ export interface Patient {
   name: string;
   initials: string;
   age: number;
-  gender: 'Male' | 'Female' | 'Other' | 'Prefer not to say';
+  gender: 'Male' | 'Female';
   phone: string;
   birthDate?: string;
   avatar?: string;

@@ -18,16 +18,13 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPatientId, setSelectedPatientId] = useState(preselectedPatientId || patients[0]?.id || '');
-  const [visitType, setVisitType] = useState<'completed' | 'scheduled'>('completed');
   
   // Format current date YYYY-MM-DD for date input
   const defaultDateStr = new Date().toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState(defaultDateStr);
-  const [visitTime, setVisitTime] = useState('10:30 AM');
-  const [procedure, setProcedure] = useState('Comprehensive Oral Exam & Cleaning');
-  const [notes, setNotes] = useState('Patient presented for checkup. Examined soft tissue and periodontal charting.');
-  const [clinicRoom, setClinicRoom] = useState('Clinic 1');
-  const [cost, setCost] = useState('150');
+  const [procedure, setProcedure] = useState('Comprehensive Oral Exam & Treatment');
+  const [notes, setNotes] = useState('Clinical evaluation, diagnosis, and treatment performed as charted.');
+  const [clinicRoom, setClinicRoom] = useState('Clinic 1 (Dr. Ahmed)');
 
   // Filter patients by name, ID, or phone
   const filteredPatients = useMemo(() => {
@@ -67,11 +64,10 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
       procedure,
       notes,
       clinicRoom,
-      cost: parseFloat(cost) || 120,
-      status: visitType
+      status: 'completed'
     };
 
-    onAddConsultation(selectedPatientId, newVisit, visitType === 'scheduled', visitTime);
+    onAddConsultation(selectedPatientId, newVisit, false);
     onClose();
   };
 
@@ -83,10 +79,10 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
             <span className="material-symbols-outlined text-[#006194] text-2xl">event_note</span>
             <div>
               <h2 className="font-headline font-bold text-xl text-slate-900">
-                {visitType === 'completed' ? 'Record Clinical Consultation' : 'Schedule Appointment'}
+                Record Clinical Consultation
               </h2>
               <p className="text-xs text-slate-500">
-                Only attending doctors can record treatments and set visit dates
+                تسجيل كشف وزيارة سريرية للمريض وتحديث التاريخ الطبي
               </p>
             </div>
           </div>
@@ -99,39 +95,10 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Visit Action Type Selector */}
-          <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl">
-            <button
-              type="button"
-              onClick={() => setVisitType('completed')}
-              className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                visitType === 'completed'
-                  ? 'bg-white text-[#006194] shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <span className="material-symbols-outlined text-[16px]">check_circle</span>
-              <span>Completed Visit (In-Chair)</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setVisitType('scheduled')}
-              className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                visitType === 'scheduled'
-                  ? 'bg-white text-[#006194] shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <span className="material-symbols-outlined text-[16px]">calendar_month</span>
-              <span>Schedule Future Appointment</span>
-            </button>
-          </div>
-
           {/* Patient Search & Autocomplete Select */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-              Search & Select Patient
+              Patient / المريض
             </label>
             <div className="relative mb-2">
               <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">
@@ -141,39 +108,39 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Type patient name, phone, or numeric ID..."
+                placeholder="Search patient name, phone, or numeric ID..."
                 className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 bg-[#f8fafc] text-xs text-slate-900 focus:outline-none focus:border-[#006194]"
               />
             </div>
 
             {/* Filtered Patient List Box */}
-            <div className="max-h-36 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 bg-[#f8fafc]">
+            <div className="max-h-32 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 bg-[#f8fafc]">
               {filteredPatients.length > 0 ? (
                 filteredPatients.map((p) => (
                   <div
                     key={p.id}
                     onClick={() => setSelectedPatientId(p.id)}
-                    className={`p-2.5 flex items-center justify-between cursor-pointer transition-colors ${
+                    className={`p-2 flex items-center justify-between cursor-pointer transition-colors ${
                       selectedPatientId === p.id ? 'bg-blue-50/80 border-l-4 border-[#006194]' : 'hover:bg-slate-100'
                     }`}
                   >
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-full bg-slate-200 text-[#006194] font-bold text-xs flex items-center justify-center">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-slate-200 text-[#006194] font-bold text-[10px] flex items-center justify-center">
                         {p.initials}
                       </div>
                       <div>
                         <p className="text-xs font-bold text-slate-900">{p.name}</p>
-                        <p className="text-[11px] text-slate-500">{p.phone}</p>
+                        <p className="text-[10px] text-slate-500">{p.phone}</p>
                       </div>
                     </div>
-                    <span className="text-xs font-mono font-bold bg-white text-slate-600 px-2 py-0.5 rounded border border-slate-200">
+                    <span className="text-[11px] font-mono font-bold bg-white text-slate-600 px-2 py-0.5 rounded border border-slate-200">
                       #{p.id}
                     </span>
                   </div>
                 ))
               ) : (
-                <div className="p-4 text-center text-xs text-slate-400">
-                  No patient found matching "{searchQuery}"
+                <div className="p-3 text-center text-xs text-slate-400">
+                  No patient found
                 </div>
               )}
             </div>
@@ -181,16 +148,16 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
             {activePatient && (
               <div className="mt-2 p-2 bg-blue-50/60 rounded-lg border border-blue-100 flex items-center justify-between text-xs">
                 <span className="text-slate-600">Selected: <strong className="text-[#006194]">{activePatient.name}</strong></span>
-                <span className="text-slate-500 font-mono">ID: {activePatient.id}</span>
+                <span className="text-slate-500 font-mono">ID: #{activePatient.id}</span>
               </div>
             )}
           </div>
 
-          {/* Date & Time Picker */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Date & Operatory Room */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                Consultation Date
+                Visit Date / تاريخ الزيارة
               </label>
               <input
                 type="date"
@@ -203,22 +170,17 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                Time Slot
+                Clinic Room / العيادة
               </label>
               <select
-                value={visitTime}
-                onChange={(e) => setVisitTime(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-[#f8fafc] text-slate-800 text-sm focus:outline-none focus:border-[#006194]"
+                value={clinicRoom}
+                onChange={(e) => setClinicRoom(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-[#f8fafc] text-slate-800 text-sm focus:outline-none focus:border-[#006194]"
               >
-                <option value="09:00 AM">09:00 AM</option>
-                <option value="09:45 AM">09:45 AM</option>
-                <option value="10:30 AM">10:30 AM</option>
-                <option value="11:15 AM">11:15 AM</option>
-                <option value="12:00 PM">12:00 PM</option>
-                <option value="02:00 PM">02:00 PM</option>
-                <option value="03:30 PM">03:30 PM</option>
-                <option value="04:15 PM">04:15 PM</option>
-                <option value="05:00 PM">05:00 PM</option>
+                <option value="Clinic 1 (Dr. Ahmed)">Clinic 1 (Dr. Ahmed)</option>
+                <option value="Clinic 2 (Dr. Mohamed)">Clinic 2 (Dr. Mohamed)</option>
+                <option value="Clinic 3 (Dr. Mahmoud)">Clinic 3 (Dr. Mahmoud)</option>
+                <option value="Clinic 4 (General Operatory)">Clinic 4 (General Operatory)</option>
               </select>
             </div>
           </div>
@@ -226,7 +188,7 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
           {/* Procedure */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-              Procedure / Treatment Plan
+              Procedure / الإجراء الطبي والعلاجي
             </label>
             <input
               type="text"
@@ -234,43 +196,14 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
               value={procedure}
               onChange={(e) => setProcedure(e.target.value)}
               className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-[#f8fafc] text-slate-800 text-sm focus:outline-none focus:border-[#006194]"
-              placeholder="e.g. Tooth 26 Composite Restoration"
+              placeholder="e.g. Tooth #26 Bridge & Crown Restoration"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                Operatory Room
-              </label>
-              <select
-                value={clinicRoom}
-                onChange={(e) => setClinicRoom(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-[#f8fafc] text-slate-800 text-sm focus:outline-none focus:border-[#006194]"
-              >
-                <option value="Clinic 1">Clinic 1 (Dr. Ahmed)</option>
-                <option value="Clinic 2">Clinic 2 (Dr. Mohamed)</option>
-                <option value="Clinic 3">Clinic 3 (Dr. Mahmoud)</option>
-                <option value="Clinic 4">Clinic 4 (General Operatory)</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                Estimated Fee ($)
-              </label>
-              <input
-                type="number"
-                value={cost}
-                onChange={(e) => setCost(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-[#f8fafc] text-slate-800 text-sm focus:outline-none focus:border-[#006194]"
-              />
-            </div>
-          </div>
-
+          {/* Clinical Notes */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-              Clinical Findings & Progress Notes
+              Clinical Findings & Progress Notes / ملاحظات الطبيب
             </label>
             <textarea
               rows={3}
@@ -290,9 +223,10 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-5 py-2.5 rounded-xl bg-[#006194] hover:bg-[#004b73] text-white text-sm font-bold shadow-xs cursor-pointer"
+              className="px-5 py-2.5 rounded-xl bg-[#006194] hover:bg-[#004b73] text-white text-sm font-bold shadow-xs cursor-pointer flex items-center gap-1.5"
             >
-              {visitType === 'completed' ? 'Record Consultation' : 'Confirm Appointment Date'}
+              <span className="material-symbols-outlined text-[18px]">check</span>
+              <span>Save Clinical Visit</span>
             </button>
           </div>
         </form>
@@ -300,3 +234,4 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
     </div>
   );
 };
+

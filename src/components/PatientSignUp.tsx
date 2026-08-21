@@ -11,7 +11,7 @@ export const PatientSignUp: React.FC<PatientSignUpProps> = ({
   onGoToLogin
 }) => {
   const [name, setName] = useState('');
-  const [gender, setGender] = useState<'Male' | 'Female' | 'Other' | 'Prefer not to say'>('Male');
+  const [gender, setGender] = useState<'Male' | 'Female'>('Male');
   const [age, setAge] = useState<string>('28');
   const [phone, setPhone] = useState('+1 (555) 019-2830');
   const [medicalNotes, setMedicalNotes] = useState('');
@@ -103,13 +103,11 @@ export const PatientSignUp: React.FC<PatientSignUpProps> = ({
             </label>
             <select
               value={gender}
-              onChange={(e) => setGender(e.target.value as any)}
+              onChange={(e) => setGender(e.target.value as 'Male' | 'Female')}
               className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-[#f8fafc] text-slate-900 text-sm focus:outline-none focus:border-[#006194] focus:ring-1 focus:ring-[#006194]"
             >
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
-              <option value="Other">Other</option>
-              <option value="Prefer not to say">Prefer not to say</option>
+              <option value="Male">Male (ذكر)</option>
+              <option value="Female">Female (أنثى)</option>
             </select>
           </div>
 

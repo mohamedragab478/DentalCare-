@@ -5,8 +5,26 @@ import { DentalChart } from './DentalChart';
 interface PatientProfileProps {
   patient: Patient;
   onBack: () => void;
-  onUpdateTooth: (toothId: number, status: ToothStatus, notes?: string, date?: string) => void;
+  onUpdateTooth: (
+    toothId: number,
+    status: ToothStatus,
+    notes?: string,
+    date?: string,
+    customProcedureName?: string,
+    bridgeSpan?: number[]
+  ) => void;
+  onBatchUpdateTeeth?: (
+    updates: Array<{
+      toothId: number;
+      status: ToothStatus;
+      notes?: string;
+      date?: string;
+      customProcedureName?: string;
+      bridgeSpan?: number[];
+    }>
+  ) => void;
   onAddVisit?: () => void;
+  onDeleteVisit?: (visitId: string) => void;
   onUploadImage?: () => void;
   onEditPatient?: () => void;
   isReadOnly?: boolean;
@@ -16,13 +34,16 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
   patient,
   onBack,
   onUpdateTooth,
+  onBatchUpdateTeeth,
   onAddVisit,
+  onDeleteVisit,
   onUploadImage,
   onEditPatient,
   isReadOnly = false
 }) => {
   const [activeTab, setActiveTab] = useState<'Overview' | 'Dental Chart' | 'Visits' | 'Medical Images'>('Dental Chart');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [visitToDelete, setVisitToDelete] = useState<string | null>(null);
 
   const defaultAvatar = 'https://lh3.googleusercontent.com/aida-public/AB6AXuBjPiLDyWepU0CeZ8X8tIln_VVoHrQtBpyU8CiodPf3F7v4BwoQcpHQcQYAzQPGLjtRhljnPUN7UWpWts7Z9cw13fBY7FOdrq2AntU5wzQDzRpOLGsrVmX5g7cIZn-DxUOUuNPZ83xs-iLQObirdHXR0A0t5KUcZiOoTP4BNMOMdEutnr0mgJO-uOU3wJ98k7MRm-dTt8NHMhFnTDXibTruBygcqXVVBZHEzQlUS7eeDlfczpm5v0NK2g';
 
@@ -127,7 +148,8 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
         <div className="space-y-6">
           <DentalChart 
             teeth={patient.teeth} 
-            onUpdateTooth={onUpdateTooth} 
+            onUpdateTooth={onUpdateTooth}
+            onBatchUpdateTeeth={onBatchUpdateTeeth}
             isReadOnly={isReadOnly}
           />
 
@@ -249,13 +271,16 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
         <div className="bg-white border border-[#e2e8f0] rounded-2xl p-6 shadow-xs">
           <div className="flex justify-between items-center border-b border-slate-100 pb-4 mb-6">
             <div>
-              <h3 className="font-headline font-bold text-lg text-slate-900">Clinical Visit Records</h3>
-              <p className="text-xs text-slate-500">Historical consultations and recorded dental treatments</p>
+              <h3 className="font-headline font-bold text-lg text-slate-900 flex items-center gap-2">
+                <span className="material-symbols-outlined text-[#006194]">history</span>
+                <span>Clinical Visit Records (سجل الزيارات والكشوفات)</span>
+              </h3>
+              <p className="text-xs text-slate-500">Historical consultations, recorded dental treatments, and upcoming visits</p>
             </div>
             {!isReadOnly && onAddVisit && (
               <button
                 onClick={onAddVisit}
-                className="px-3.5 py-1.5 bg-[#006194] text-white rounded-xl text-xs font-semibold hover:bg-[#004b73] flex items-center gap-1.5 cursor-pointer"
+                className="px-3.5 py-1.5 bg-[#006194] text-white rounded-xl text-xs font-semibold hover:bg-[#004b73] flex items-center gap-1.5 cursor-pointer shadow-xs"
               >
                 <span className="material-symbols-outlined text-[16px]">add</span>
                 <span>Add Visit</span>
@@ -265,26 +290,70 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
 
           <div className="space-y-4">
             {patient.visits.map((v) => (
-              <div key={v.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-bold text-sm text-slate-900">{v.procedure}</span>
-                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-[#006194]">
-                      {v.clinicRoom || 'Operatory'}
-                    </span>
+              <div
+                key={v.id}
+                className="p-5 rounded-2xl border border-slate-200 bg-[#f8fafc] hover:bg-white hover:border-slate-300 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xs"
+              >
+                <div className="flex items-start gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#006194] shrink-0 mt-0.5">
+                    <span className="material-symbols-outlined text-[22px]">medical_services</span>
                   </div>
-                  <p className="text-xs text-slate-600 mb-1">{v.notes}</p>
-                  <span className="text-[11px] text-slate-400">Doctor: {v.doctorName || 'Dr. Ahmed'}</span>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <span className="font-bold text-sm text-slate-900">{v.procedure}</span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                        v.status === 'completed' 
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                          : 'bg-blue-50 text-[#006194] border-blue-200'
+                      }`}>
+                        {v.status === 'completed' ? 'Completed' : 'Scheduled'}
+                      </span>
+                      {v.clinicRoom && (
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200">
+                          {v.clinicRoom}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-600 mb-1.5 leading-relaxed">{v.notes || 'Routine consultation and dental evaluation.'}</p>
+                    <div className="flex items-center gap-4 text-[11px] text-slate-400">
+                      <span className="flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[14px]">person</span>
+                        Doctor: {v.doctorName || 'Dr. Ahmed'}
+                      </span>
+                      {v.cost && (
+                        <span className="font-semibold text-slate-700">
+                          Fee: ${v.cost}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div className="text-right flex md:flex-col justify-between items-end">
-                  <span className="font-bold text-sm text-[#006194]">{v.date}</span>
-                  {v.cost && <span className="text-xs text-slate-500">${v.cost}</span>}
+
+                <div className="flex items-center justify-between md:justify-end gap-3 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-200/60">
+                  <div className="text-left md:text-right">
+                    <span className="font-mono font-bold text-xs text-[#006194] block">{v.date}</span>
+                    <span className="text-[10px] text-slate-400">Visit Date</span>
+                  </div>
+
+                  {!isReadOnly && onDeleteVisit && (
+                    <button
+                      onClick={() => setVisitToDelete(v.id)}
+                      title="Delete this visit / مسح هذه الزيارة"
+                      className="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200 transition-colors cursor-pointer flex items-center gap-1 text-xs font-semibold"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">delete</span>
+                      <span className="hidden sm:inline">Delete</span>
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
+
             {patient.visits.length === 0 && (
-              <div className="text-center py-10 text-slate-400 text-xs">
-                No past consultations recorded for this patient.
+              <div className="text-center py-12 px-4 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50">
+                <span className="material-symbols-outlined text-4xl text-slate-300 mb-2">event_busy</span>
+                <p className="font-headline font-bold text-sm text-slate-700">No visits recorded</p>
+                <p className="text-xs text-slate-500 mt-0.5">There are no consultations or treatment sessions recorded for this patient.</p>
               </div>
             )}
           </div>
@@ -338,6 +407,46 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Delete Visit Confirmation Modal */}
+      {visitToDelete && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95">
+            <div className="w-12 h-12 rounded-full bg-red-50 text-red-600 flex items-center justify-center mb-4 mx-auto border border-red-100">
+              <span className="material-symbols-outlined text-2xl">delete_forever</span>
+            </div>
+            <h3 className="font-headline font-bold text-lg text-slate-900 text-center mb-1">
+              Delete Visit Record?
+            </h3>
+            <p className="text-xs text-slate-500 text-center mb-6 leading-relaxed">
+              Are you sure you want to permanently delete this visit record from the patient's history? This action cannot be undone.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setVisitToDelete(null)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-semibold text-xs hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                Cancel (إلغاء)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onDeleteVisit && visitToDelete) {
+                    onDeleteVisit(visitToDelete);
+                  }
+                  setVisitToDelete(null);
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-1"
+              >
+                <span className="material-symbols-outlined text-[16px]">delete</span>
+                <span>Yes, Delete (مسح)</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

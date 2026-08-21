@@ -4,13 +4,12 @@ import { AppView } from '../types';
 interface SidebarProps {
   currentView: AppView;
   onNavigate: (view: AppView) => void;
-  onNewConsultation: () => void;
+  onNewConsultation?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   currentView,
-  onNavigate,
-  onNewConsultation
+  onNavigate
 }) => {
   const clinicLogo = 'https://lh3.googleusercontent.com/aida-public/AB6AXuB44Wc_reKFt02f-BdI9PRYxzBZCIcejQgo_rqs2o6qCGn65HRrXMB4R_BKX4QdLZR6fEp-bT50cwNHoLB0DIqcMKLj9zhQedP7O6j4MT51zvoe9HwmIqk_1ZCMA_TkhVytVxKG65N1Jjfh0ZJVUeqE4XwBgRzWqNRizyzxRXvscMP45M0WpZuWynL2hz7O_ahrc85Ck4uXddLah2rxNjJIYqQBM_z0JVawCzNPmxbFhJjnEnmtW-oAAA';
 
@@ -71,7 +70,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               key={item.id}
               onClick={() => onNavigate(item.id)}
-              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all text-left font-medium ${
+              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all text-left font-medium cursor-pointer ${
                 isActive
                   ? 'bg-[#dae2fd] text-[#006194] font-semibold'
                   : 'text-[#3f465c] hover:bg-slate-200/60 hover:text-[#181c20]'
@@ -86,16 +85,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         })}
       </nav>
 
-      {/* Primary CTA button at bottom */}
-      <div className="px-4 mt-auto pt-4 border-t border-[#e2e8f0]">
-        <button
-          onClick={onNewConsultation}
-          className="w-full bg-[#006194] text-white hover:bg-[#004b73] active:scale-[0.98] transition-all py-2.5 px-4 rounded-lg font-medium text-sm flex items-center justify-center gap-2 shadow-xs cursor-pointer"
-          id="new-consultation-sidebar-btn"
-        >
-          <span className="material-symbols-outlined text-[18px]">add</span>
-          <span>New Consultation</span>
-        </button>
+      {/* Footer info */}
+      <div className="px-5 pt-4 border-t border-[#e2e8f0] text-[11px] text-slate-400">
+        DentalCare Management Suite &copy; 2026
       </div>
     </aside>
   );

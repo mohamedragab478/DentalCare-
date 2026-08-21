@@ -74,7 +74,7 @@ export function App() {
   };
 
   const handlePatientSignUp = (newPatient: Patient) => {
-    setPatients((prev) => [newPatient, ...prev]);
+    setPatients((prev) => [...prev, newPatient]);
     setSelectedPatientId(newPatient.id);
     setIsAuthenticated(true);
     setUserRole('patient');
@@ -87,13 +87,24 @@ export function App() {
     );
   };
 
+  const handleReorderPatients = (newOrder: Patient[]) => {
+    setPatients(newOrder);
+  };
+
   const handleLogout = () => {
     setIsAuthenticated(false);
     setEditingPatient(null);
     setCurrentView('auth-gateway');
   };
 
-  const handleUpdateTooth = (toothId: number, status: ToothStatus, notes?: string, date?: string) => {
+  const handleUpdateTooth = (
+    toothId: number,
+    status: ToothStatus,
+    notes?: string,
+    date?: string,
+    customProcedureName?: string,
+    bridgeSpan?: number[]
+  ) => {
     setPatients((prev) =>
       prev.map((p) => {
         if (p.id === activePatient.id) {
@@ -103,13 +114,52 @@ export function App() {
               id: toothId,
               status,
               notes: notes !== undefined ? notes : p.teeth[toothId]?.notes,
-              lastTreatmentDate: date !== undefined ? date : p.teeth[toothId]?.lastTreatmentDate
+              lastTreatmentDate: date !== undefined ? date : p.teeth[toothId]?.lastTreatmentDate,
+              customProcedureName: customProcedureName !== undefined ? customProcedureName : p.teeth[toothId]?.customProcedureName,
+              bridgeSpan: bridgeSpan !== undefined ? bridgeSpan : p.teeth[toothId]?.bridgeSpan
             }
           };
           return {
             ...p,
             teeth: updatedTeeth,
             lastVisit: date || p.lastVisit
+          };
+        }
+        return p;
+      })
+    );
+  };
+
+  const handleBatchUpdateTeeth = (
+    updates: Array<{
+      toothId: number;
+      status: ToothStatus;
+      notes?: string;
+      date?: string;
+      customProcedureName?: string;
+      bridgeSpan?: number[];
+    }>
+  ) => {
+    setPatients((prev) =>
+      prev.map((p) => {
+        if (p.id === activePatient.id) {
+          const updatedTeeth = { ...p.teeth };
+          let latestDate = p.lastVisit;
+          for (const u of updates) {
+            updatedTeeth[u.toothId] = {
+              id: u.toothId,
+              status: u.status,
+              notes: u.notes !== undefined ? u.notes : p.teeth[u.toothId]?.notes,
+              lastTreatmentDate: u.date !== undefined ? u.date : p.teeth[u.toothId]?.lastTreatmentDate,
+              customProcedureName: u.customProcedureName !== undefined ? u.customProcedureName : p.teeth[u.toothId]?.customProcedureName,
+              bridgeSpan: u.bridgeSpan !== undefined ? u.bridgeSpan : p.teeth[u.toothId]?.bridgeSpan
+            };
+            if (u.date) latestDate = u.date;
+          }
+          return {
+            ...p,
+            teeth: updatedTeeth,
+            lastVisit: latestDate
           };
         }
         return p;
@@ -141,6 +191,27 @@ export function App() {
               visits: [visit, ...p.visits]
             };
           }
+        }
+        return p;
+      })
+    );
+  };
+
+  const handleDeleteVisit = (patientId: string, visitId: string) => {
+    setPatients((prev) =>
+      prev.map((p) => {
+        if (p.id === patientId) {
+          const remainingVisits = p.visits.filter((v) => v.id !== visitId);
+          const completedVisits = remainingVisits.filter((v) => v.status === 'completed');
+          const scheduledVisits = remainingVisits.filter((v) => v.status === 'scheduled');
+
+          return {
+            ...p,
+            visits: remainingVisits,
+            lastVisit: completedVisits.length > 0 ? completedVisits[0].date : (remainingVisits.length > 0 ? remainingVisits[0].date : 'No visits'),
+            nextVisit: scheduledVisits.length > 0 ? scheduledVisits[0].date : undefined,
+            nextVisitTime: scheduledVisits.length > 0 ? p.nextVisitTime : undefined
+          };
         }
         return p;
       })
@@ -305,12 +376,13 @@ export function App() {
                       doctorProfile={doctorProfile}
                       completedPatientIds={completedQueueIds}
                       onTogglePatientCompleted={handleTogglePatientCompleted}
+                      onReorderPatients={handleReorderPatients}
+                      onDeleteVisit={handleDeleteVisit}
                       onSelectPatient={(p) => {
                         setSelectedPatientId(p.id);
                         setCurrentView('doctor-patient-profile');
                       }}
                       onNavigate={(v) => setCurrentView(v)}
-                      onNewConsultation={() => setIsConsultationOpen(true)}
                     />
                   )}
 
@@ -332,7 +404,9 @@ export function App() {
                       patient={activePatient}
                       onBack={() => setCurrentView('doctor-patients')}
                       onUpdateTooth={handleUpdateTooth}
+                      onBatchUpdateTeeth={handleBatchUpdateTeeth}
                       onAddVisit={() => setIsConsultationOpen(true)}
+                      onDeleteVisit={(visitId) => handleDeleteVisit(activePatient.id, visitId)}
                       onUploadImage={() => setIsUploadImageOpen(true)}
                       onEditPatient={() => handleOpenEditPatient(activePatient)}
                       isReadOnly={false}
@@ -348,6 +422,7 @@ export function App() {
                         setCurrentView('doctor-patient-profile');
                       }}
                       onNewConsultation={() => setIsConsultationOpen(true)}
+                      onDeleteVisit={handleDeleteVisit}
                     />
                   )}
 

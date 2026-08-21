@@ -3,13 +3,34 @@ import { ToothRecord, ToothStatus } from '../types';
 
 interface DentalChartProps {
   teeth: Record<number, ToothRecord>;
-  onUpdateTooth?: (toothId: number, status: ToothStatus, notes?: string, date?: string) => void;
+  onUpdateTooth?: (
+    toothId: number,
+    status: ToothStatus,
+    notes?: string,
+    date?: string,
+    customProcedureName?: string,
+    bridgeSpan?: number[]
+  ) => void;
+  onBatchUpdateTeeth?: (
+    updates: Array<{
+      toothId: number;
+      status: ToothStatus;
+      notes?: string;
+      date?: string;
+      customProcedureName?: string;
+      bridgeSpan?: number[];
+    }>
+  ) => void;
   isReadOnly?: boolean;
   onSelectTooth?: (toothId: number) => void;
   selectedToothId?: number | null;
 }
 
 export type ToothType = 'incisor' | 'canine' | 'premolar' | 'molar';
+
+// Continuous dental arch tooth sequences (FDI standard from right to left)
+export const UPPER_ARCH_ORDER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
+export const LOWER_ARCH_ORDER = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38];
 
 export const getToothType = (toothId: number): { type: ToothType; arabicName: string; englishName: string } => {
   const pos = toothId % 10;
@@ -44,6 +65,7 @@ export const getToothType = (toothId: number): { type: ToothType; arabicName: st
 export const DentalChart: React.FC<DentalChartProps> = ({
   teeth,
   onUpdateTooth,
+  onBatchUpdateTeeth,
   isReadOnly = false,
   onSelectTooth,
   selectedToothId: controlledToothId
@@ -52,6 +74,14 @@ export const DentalChart: React.FC<DentalChartProps> = ({
   const selectedToothId = controlledToothId !== undefined && controlledToothId !== null ? controlledToothId : internalSelectedId;
   const [editingNotes, setEditingNotes] = useState<string>('');
   const [isEditingNotes, setIsEditingNotes] = useState<boolean>(false);
+
+  // Modals / Configurator States for Bridge & Other procedures
+  const [isBridgeModalOpen, setIsBridgeModalOpen] = useState<boolean>(false);
+  const [selectedBridgeTeeth, setSelectedBridgeTeeth] = useState<number[]>([]);
+  const [bridgeError, setBridgeError] = useState<string | null>(null);
+
+  const [isOtherModalOpen, setIsOtherModalOpen] = useState<boolean>(false);
+  const [customProcedureName, setCustomProcedureName] = useState<string>('Veneer (فينير)');
 
   const handleSelectTooth = (id: number) => {
     setInternalSelectedId(id);
@@ -70,7 +100,7 @@ export const DentalChart: React.FC<DentalChartProps> = ({
   const toothTypeInfo = getToothType(selectedToothId);
 
   // Status visual mapping
-  const getStatusColor = (status: ToothStatus) => {
+  const getStatusColor = (status: ToothStatus, customName?: string) => {
     switch (status) {
       case 'extraction':
         return {
@@ -96,12 +126,12 @@ export const DentalChart: React.FC<DentalChartProps> = ({
         };
       case 'root-canal':
         return {
-          fill: '#d1fae5',
-          stroke: '#10b981',
-          iconColor: '#047857',
-          badgeBg: 'bg-[#d1fae5]',
-          badgeText: 'text-[#047857]',
-          dotBg: 'bg-[#10b981]',
+          fill: '#e2e8f0',
+          stroke: '#475569',
+          iconColor: '#1e293b',
+          badgeBg: 'bg-slate-200',
+          badgeText: 'text-slate-800',
+          dotBg: 'bg-slate-700',
           label: 'Root Canal',
           arabicLabel: 'علاج عصب'
         };
@@ -127,6 +157,28 @@ export const DentalChart: React.FC<DentalChartProps> = ({
           label: 'Implant',
           arabicLabel: 'زراعة'
         };
+      case 'bridge':
+        return {
+          fill: '#ccfbf1',
+          stroke: '#0d9488',
+          iconColor: '#0f766e',
+          badgeBg: 'bg-[#ccfbf1]',
+          badgeText: 'text-[#0f766e]',
+          dotBg: 'bg-[#0d9488]',
+          label: 'Bridge',
+          arabicLabel: 'بريدج / جسر'
+        };
+      case 'other':
+        return {
+          fill: '#faedcd',
+          stroke: '#603813',
+          iconColor: '#3e2723',
+          badgeBg: 'bg-[#eddcd2]',
+          badgeText: 'text-[#4a2c11]',
+          dotBg: 'bg-[#603813]',
+          label: customName || 'Other',
+          arabicLabel: customName || 'إجراء مخصص'
+        };
       case 'none':
       default:
         return {
@@ -144,6 +196,20 @@ export const DentalChart: React.FC<DentalChartProps> = ({
 
   const handleStatusChange = (newStatus: ToothStatus) => {
     if (isReadOnly || !onUpdateTooth) return;
+
+    if (newStatus === 'bridge') {
+      // Open bridge span configurator
+      initiateBridgeConfig(selectedToothId);
+      return;
+    }
+
+    if (newStatus === 'other') {
+      // Open custom procedure configurator
+      setCustomProcedureName(selectedTooth.customProcedureName || 'Veneer (فينير)');
+      setIsOtherModalOpen(true);
+      return;
+    }
+
     const today = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
     onUpdateTooth(
       selectedToothId,
@@ -153,13 +219,123 @@ export const DentalChart: React.FC<DentalChartProps> = ({
     );
   };
 
+  // Bridge Span Setup & Validation
+  const initiateBridgeConfig = (startToothId: number) => {
+    const isUpper = UPPER_ARCH_ORDER.includes(startToothId);
+    const arch = isUpper ? UPPER_ARCH_ORDER : LOWER_ARCH_ORDER;
+    const idx = arch.indexOf(startToothId);
+
+    // Default to this tooth and its next neighbor if available
+    const nextTooth = idx + 1 < arch.length ? arch[idx + 1] : arch[idx - 1];
+    const initialSpan = [startToothId, nextTooth].sort((a, b) => arch.indexOf(a) - arch.indexOf(b));
+    setSelectedBridgeTeeth(initialSpan);
+    setBridgeError(null);
+    setIsBridgeModalOpen(true);
+  };
+
+  const validateBridgeAdjacency = (candidateTeeth: number[]): { isValid: boolean; message?: string } => {
+    if (candidateTeeth.length < 2) {
+      return { isValid: false, message: 'Bridge must span at least 2 teeth / الجسر يجب أن يشمل سنين أو أكثر' };
+    }
+
+    const isUpper = UPPER_ARCH_ORDER.includes(candidateTeeth[0]);
+    const arch = isUpper ? UPPER_ARCH_ORDER : LOWER_ARCH_ORDER;
+
+    // Check all are on the same arch
+    const allSameArch = candidateTeeth.every((t) => arch.includes(t));
+    if (!allSameArch) {
+      return { isValid: false, message: 'All bridge teeth must belong to the same dental arch / الأسنان يجب أن تكون على نفس الفك' };
+    }
+
+    // Check strict contiguity
+    const indices = candidateTeeth.map((t) => arch.indexOf(t)).sort((a, b) => a - b);
+    for (let i = 1; i < indices.length; i++) {
+      if (indices[i] !== indices[i - 1] + 1) {
+        return {
+          isValid: false,
+          message: `Selected teeth are not adjacent! Teeth in a bridge must be strictly contiguous neighbors along the arch (الأسنان المحددة غير متجاورة! الأسنان في البريدج يجب أن تكون بجوار بعضها مباشرة دون فواصل)`
+        };
+      }
+    }
+
+    return { isValid: true };
+  };
+
+  const toggleToothInBridge = (tId: number) => {
+    let updated: number[];
+    if (selectedBridgeTeeth.includes(tId)) {
+      updated = selectedBridgeTeeth.filter((t) => t !== tId);
+    } else {
+      updated = [...selectedBridgeTeeth, tId];
+    }
+
+    const isUpper = UPPER_ARCH_ORDER.includes(tId);
+    const arch = isUpper ? UPPER_ARCH_ORDER : LOWER_ARCH_ORDER;
+    updated.sort((a, b) => arch.indexOf(a) - arch.indexOf(b));
+
+    setSelectedBridgeTeeth(updated);
+    const validation = validateBridgeAdjacency(updated);
+    setBridgeError(validation.isValid ? null : validation.message || 'Invalid selection');
+  };
+
+  const handleApplyBridge = () => {
+    const validation = validateBridgeAdjacency(selectedBridgeTeeth);
+    if (!validation.isValid) {
+      setBridgeError(validation.message || 'Invalid bridge selection');
+      return;
+    }
+
+    const today = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const spanText = selectedBridgeTeeth.join(', ');
+
+    if (onBatchUpdateTeeth) {
+      const updates = selectedBridgeTeeth.map((id) => ({
+        toothId: id,
+        status: 'bridge' as ToothStatus,
+        notes: `Fixed Prosthodontic Bridge connecting teeth #${spanText}`,
+        date: today,
+        bridgeSpan: selectedBridgeTeeth
+      }));
+      onBatchUpdateTeeth(updates);
+    } else if (onUpdateTooth) {
+      selectedBridgeTeeth.forEach((id) => {
+        onUpdateTooth(
+          id,
+          'bridge',
+          `Fixed Prosthodontic Bridge connecting teeth #${spanText}`,
+          today,
+          undefined,
+          selectedBridgeTeeth
+        );
+      });
+    }
+
+    setIsBridgeModalOpen(false);
+  };
+
+  const handleApplyOtherProcedure = () => {
+    if (!customProcedureName.trim() || !onUpdateTooth) return;
+    const today = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+    onUpdateTooth(
+      selectedToothId,
+      'other',
+      selectedTooth.notes || `Procedure: ${customProcedureName.trim()}`,
+      today,
+      customProcedureName.trim()
+    );
+    setIsOtherModalOpen(false);
+  };
+
   const handleSaveNotes = () => {
     if (isReadOnly || !onUpdateTooth) return;
     onUpdateTooth(
       selectedToothId,
       selectedTooth.status,
       editingNotes,
-      selectedTooth.lastTreatmentDate
+      selectedTooth.lastTreatmentDate,
+      selectedTooth.customProcedureName,
+      selectedTooth.bridgeSpan
     );
     setIsEditingNotes(false);
   };
@@ -206,24 +382,42 @@ export const DentalChart: React.FC<DentalChartProps> = ({
     { id: 38, cx: 635, cy: 265, r: 17 },
   ];
 
+  const allTeethMap = [...upperTeeth, ...lowerTeeth].reduce((acc, t) => {
+    acc[t.id] = t;
+    return acc;
+  }, {} as Record<number, { id: number; cx: number; cy: number; r: number }>);
+
+  // Find all active Bridge Connections to draw on SVG
+  const renderedBridgePairs: Array<{ from: { cx: number; cy: number }; to: { cx: number; cy: number }; key: string }> = [];
+  const processedPairs = new Set<string>();
+
+  (Object.values(teeth) as ToothRecord[]).forEach((tooth) => {
+    if (tooth.status === 'bridge' && tooth.bridgeSpan && tooth.bridgeSpan.length > 1) {
+      const span = tooth.bridgeSpan;
+      for (let i = 0; i < span.length - 1; i++) {
+        const idA = span[i];
+        const idB = span[i + 1];
+        const key = [Math.min(idA, idB), Math.max(idA, idB)].join('-');
+        if (!processedPairs.has(key) && allTeethMap[idA] && allTeethMap[idB]) {
+          processedPairs.add(key);
+          renderedBridgePairs.push({
+            from: { cx: allTeethMap[idA].cx, cy: allTeethMap[idA].cy },
+            to: { cx: allTeethMap[idB].cx, cy: allTeethMap[idB].cy },
+            key
+          });
+        }
+      }
+    }
+  });
+
   // Render authentic anatomical SVG icon inside the tooth node
   const renderToothAnatomyIcon = (toothId: number, cx: number, cy: number, iconColor: string) => {
     const { type } = getToothType(toothId);
 
     if (type === 'incisor') {
-      // قاطع: مستطيل أمامي بشفرة مستوية وخط مركزي
       return (
         <g transform={`translate(${cx - 7}, ${cy - 7}) scale(0.7)`}>
-          <rect
-            x="2"
-            y="2"
-            width="16"
-            height="16"
-            rx="3"
-            fill="none"
-            stroke={iconColor}
-            strokeWidth="2"
-          />
+          <rect x="2" y="2" width="16" height="16" rx="3" fill="none" stroke={iconColor} strokeWidth="2" />
           <line x1="10" y1="4" x2="10" y2="16" stroke={iconColor} strokeWidth="1.5" strokeDasharray="2 1" />
           <line x1="4" y1="7" x2="16" y2="7" stroke={iconColor} strokeWidth="1" opacity="0.6" />
         </g>
@@ -231,23 +425,15 @@ export const DentalChart: React.FC<DentalChartProps> = ({
     }
 
     if (type === 'canine') {
-      // ناب: شكل مدبب / رمح حاد
       return (
         <g transform={`translate(${cx - 7}, ${cy - 7}) scale(0.7)`}>
-          <path
-            d="M 10,2 L 18,10 L 14,18 L 6,18 L 2,10 Z"
-            fill="none"
-            stroke={iconColor}
-            strokeWidth="2"
-            strokeLinejoin="round"
-          />
+          <path d="M 10,2 L 18,10 L 14,18 L 6,18 L 2,10 Z" fill="none" stroke={iconColor} strokeWidth="2" strokeLinejoin="round" />
           <circle cx="10" cy="10" r="2" fill={iconColor} />
         </g>
       );
     }
 
     if (type === 'premolar') {
-      // ضاحك: حلمتان مستديرتان (Bicuspid) مع شق وسطي
       return (
         <g transform={`translate(${cx - 7}, ${cy - 7}) scale(0.7)`}>
           <ellipse cx="6" cy="10" rx="4" ry="7" fill="none" stroke={iconColor} strokeWidth="1.8" />
@@ -257,19 +443,10 @@ export const DentalChart: React.FC<DentalChartProps> = ({
       );
     }
 
-    // Molar (ضرس): 4 حلمات تشريحية مع خطوط الشقوق المتقاطعة
+    // Molar (ضرس)
     return (
       <g transform={`translate(${cx - 8}, ${cy - 8}) scale(0.8)`}>
-        <rect
-          x="2"
-          y="2"
-          width="16"
-          height="16"
-          rx="4"
-          fill="none"
-          stroke={iconColor}
-          strokeWidth="2"
-        />
+        <rect x="2" y="2" width="16" height="16" rx="4" fill="none" stroke={iconColor} strokeWidth="2" />
         <line x1="10" y1="3" x2="10" y2="17" stroke={iconColor} strokeWidth="1.5" />
         <line x1="3" y1="10" x2="17" y2="10" stroke={iconColor} strokeWidth="1.5" />
         <circle cx="10" cy="10" r="1.5" fill={iconColor} />
@@ -277,7 +454,7 @@ export const DentalChart: React.FC<DentalChartProps> = ({
     );
   };
 
-  const currentStatusConfig = getStatusColor(selectedTooth.status);
+  const currentStatusConfig = getStatusColor(selectedTooth.status, selectedTooth.customProcedureName);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -293,52 +470,55 @@ export const DentalChart: React.FC<DentalChartProps> = ({
             <p className="text-xs text-slate-500 mt-0.5">
               {isReadOnly
                 ? 'Select any tooth on the arch to view your documented clinical history'
-                : 'Click any tooth on the arch to inspect details and assign clinical procedures below'}
+                : 'Click any tooth to inspect details and assign clinical procedures below'}
             </p>
           </div>
           
-          {/* Status Legend */}
+          {/* Status Legend with Bridge and Other */}
           <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-600 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200">
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1">
               <span className="w-2.5 h-2.5 rounded-full bg-[#ef4444]"></span> Extraction
             </span>
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1">
               <span className="w-2.5 h-2.5 rounded-full bg-[#f59e0b]"></span> Filling
             </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#10b981]"></span> Root Canal
+            <span className="flex items-center gap-1">
+              <span className="w-2.5 h-2.5 rounded-full bg-slate-700"></span> Root Canal (عصب)
             </span>
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1">
               <span className="w-2.5 h-2.5 rounded-full bg-[#8b5cf6]"></span> Crown
             </span>
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1">
               <span className="w-2.5 h-2.5 rounded-full bg-[#3b82f6]"></span> Implant
             </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#cbd5e1] border border-slate-300"></span> Healthy
+            <span className="flex items-center gap-1">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#0d9488]"></span> Bridge (بريدج)
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#603813]"></span> Other (أخرى)
             </span>
           </div>
         </div>
 
-        {/* Interactive Arch Canvas with Widened Spacing & Shapes */}
+        {/* Interactive Arch Canvas without jitter */}
         <div className="flex flex-col items-center justify-center bg-[#f8fafc] rounded-2xl border border-slate-200 p-4 md:p-6 select-none relative overflow-hidden">
           {/* Anatomical Key Legend Bar */}
           <div className="w-full flex justify-between items-center text-[11px] font-semibold text-slate-500 px-2 pb-2 border-b border-slate-200/80 mb-2">
             <span className="flex items-center gap-1">
               <span className="w-3 h-3 border border-slate-400 rounded-xs flex items-center justify-center text-[8px]">■</span>
-              قواطع (Incisors: 11, 12, 21, 22...)
+              قواطع (Incisors)
             </span>
             <span className="flex items-center gap-1">
               <span className="w-3 h-3 border border-slate-400 rounded-full flex items-center justify-center text-[8px]">▲</span>
-              أنياب (Canines: 13, 23, 33, 43)
+              أنياب (Canines)
             </span>
             <span className="flex items-center gap-1">
               <span className="w-3 h-3 border border-slate-400 rounded-xs flex items-center justify-center text-[8px]">⬭</span>
-              ضواحك (Premolars: 14, 15, 24...)
+              ضواحك (Premolars)
             </span>
             <span className="flex items-center gap-1">
               <span className="w-3 h-3 border border-slate-400 rounded-xs flex items-center justify-center text-[8px]">⊞</span>
-              أضراس (Molars: 16, 17, 18...)
+              أضراس (Molars)
             </span>
           </div>
 
@@ -386,11 +566,36 @@ export const DentalChart: React.FC<DentalChartProps> = ({
                 L
               </text>
 
+              {/* Visual Connecting Bridge Bars */}
+              {renderedBridgePairs.map((pair) => (
+                <g key={pair.key}>
+                  <line
+                    x1={pair.from.cx}
+                    y1={pair.from.cy}
+                    x2={pair.to.cx}
+                    y2={pair.to.cy}
+                    stroke="#0d9488"
+                    strokeWidth="8"
+                    strokeLinecap="round"
+                    opacity="0.85"
+                  />
+                  <line
+                    x1={pair.from.cx}
+                    y1={pair.from.cy}
+                    x2={pair.to.cx}
+                    y2={pair.to.cy}
+                    stroke="#ffffff"
+                    strokeWidth="2"
+                    strokeDasharray="4 3"
+                  />
+                </g>
+              ))}
+
               {/* Upper Teeth Nodes */}
               {upperTeeth.map((tooth) => {
                 const record = teeth[tooth.id];
                 const status = record?.status || 'none';
-                const colorConfig = getStatusColor(status);
+                const colorConfig = getStatusColor(status, record?.customProcedureName);
                 const isSelected = selectedToothId === tooth.id;
 
                 const isTopHalf = tooth.cy < 100;
@@ -446,7 +651,7 @@ export const DentalChart: React.FC<DentalChartProps> = ({
               {lowerTeeth.map((tooth) => {
                 const record = teeth[tooth.id];
                 const status = record?.status || 'none';
-                const colorConfig = getStatusColor(status);
+                const colorConfig = getStatusColor(status, record?.customProcedureName);
                 const isSelected = selectedToothId === tooth.id;
 
                 const textY = tooth.cy + tooth.r + 15;
@@ -500,7 +705,7 @@ export const DentalChart: React.FC<DentalChartProps> = ({
           </div>
         </div>
 
-        {/* Clinical Action Selection Window - PLACED DIRECTLY BELOW THE CHART (User requirement) */}
+        {/* Clinical Action Selection Window */}
         {!isReadOnly && (
           <div className="bg-[#f8fafc] rounded-2xl border border-slate-200 p-5 shadow-2xs space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
@@ -528,12 +733,12 @@ export const DentalChart: React.FC<DentalChartProps> = ({
               </div>
             </div>
 
-            {/* Procedure Action Buttons Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5 text-xs font-bold">
+            {/* Procedure Action Buttons Grid including Bridge and Other */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2 text-xs font-bold">
               {/* Extraction */}
               <button
                 onClick={() => handleStatusChange('extraction')}
-                className={`py-3 px-3 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all border cursor-pointer ${
+                className={`py-3 px-2 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all border cursor-pointer ${
                   selectedTooth.status === 'extraction'
                     ? 'bg-[#ef4444] text-white border-[#ef4444] shadow-md ring-2 ring-[#ef4444]/30'
                     : 'bg-white text-[#b91c1c] border-red-200 hover:bg-[#fee2e2]'
@@ -546,7 +751,7 @@ export const DentalChart: React.FC<DentalChartProps> = ({
               {/* Filling */}
               <button
                 onClick={() => handleStatusChange('filling')}
-                className={`py-3 px-3 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all border cursor-pointer ${
+                className={`py-3 px-2 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all border cursor-pointer ${
                   selectedTooth.status === 'filling'
                     ? 'bg-[#f59e0b] text-white border-[#f59e0b] shadow-md ring-2 ring-[#f59e0b]/30'
                     : 'bg-white text-[#b45309] border-amber-200 hover:bg-[#fef3c7]'
@@ -556,13 +761,13 @@ export const DentalChart: React.FC<DentalChartProps> = ({
                 <span>Filling (حشو)</span>
               </button>
 
-              {/* Root Canal */}
+              {/* Root Canal (رصاصي غامق) */}
               <button
                 onClick={() => handleStatusChange('root-canal')}
-                className={`py-3 px-3 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all border cursor-pointer ${
+                className={`py-3 px-2 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all border cursor-pointer ${
                   selectedTooth.status === 'root-canal'
-                    ? 'bg-[#10b981] text-white border-[#10b981] shadow-md ring-2 ring-[#10b981]/30'
-                    : 'bg-white text-[#047857] border-emerald-200 hover:bg-[#d1fae5]'
+                    ? 'bg-slate-700 text-white border-slate-700 shadow-md ring-2 ring-slate-700/30'
+                    : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
                 }`}
               >
                 <span className="material-symbols-outlined text-[20px]">medical_services</span>
@@ -572,7 +777,7 @@ export const DentalChart: React.FC<DentalChartProps> = ({
               {/* Crown */}
               <button
                 onClick={() => handleStatusChange('crown')}
-                className={`py-3 px-3 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all border cursor-pointer ${
+                className={`py-3 px-2 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all border cursor-pointer ${
                   selectedTooth.status === 'crown'
                     ? 'bg-[#8b5cf6] text-white border-[#8b5cf6] shadow-md ring-2 ring-[#8b5cf6]/30'
                     : 'bg-white text-[#6d28d9] border-purple-200 hover:bg-[#ede9fe]'
@@ -585,7 +790,7 @@ export const DentalChart: React.FC<DentalChartProps> = ({
               {/* Implant */}
               <button
                 onClick={() => handleStatusChange('implant')}
-                className={`py-3 px-3 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all border cursor-pointer ${
+                className={`py-3 px-2 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all border cursor-pointer ${
                   selectedTooth.status === 'implant'
                     ? 'bg-[#3b82f6] text-white border-[#3b82f6] shadow-md ring-2 ring-[#3b82f6]/30'
                     : 'bg-white text-[#1d4ed8] border-blue-200 hover:bg-[#dbeafe]'
@@ -595,10 +800,36 @@ export const DentalChart: React.FC<DentalChartProps> = ({
                 <span>Implant (زراعة)</span>
               </button>
 
+              {/* Bridge (NEW PROCEDURE - Multi-Tooth Adjacent) */}
+              <button
+                onClick={() => handleStatusChange('bridge')}
+                className={`py-3 px-2 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all border cursor-pointer ${
+                  selectedTooth.status === 'bridge'
+                    ? 'bg-[#0d9488] text-white border-[#0d9488] shadow-md ring-2 ring-[#0d9488]/30'
+                    : 'bg-white text-[#0f766e] border-teal-200 hover:bg-[#ccfbf1]'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[20px]">linear_scale</span>
+                <span>Bridge (بريدج)</span>
+              </button>
+
+              {/* Other (بني غامق) */}
+              <button
+                onClick={() => handleStatusChange('other')}
+                className={`py-3 px-2 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all border cursor-pointer ${
+                  selectedTooth.status === 'other'
+                    ? 'bg-[#603813] text-white border-[#603813] shadow-md ring-2 ring-[#603813]/30'
+                    : 'bg-white text-[#603813] border-[#d7ccc8] hover:bg-[#eddcd2]'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[20px]">more_horiz</span>
+                <span>Other (أخرى)</span>
+              </button>
+
               {/* Clear / Healthy */}
               <button
                 onClick={() => handleStatusChange('none')}
-                className={`py-3 px-3 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all border cursor-pointer ${
+                className={`py-3 px-2 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all border cursor-pointer ${
                   selectedTooth.status === 'none'
                     ? 'bg-slate-800 text-white border-slate-800 shadow-md'
                     : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
@@ -637,11 +868,24 @@ export const DentalChart: React.FC<DentalChartProps> = ({
               <div className="mt-1.5">
                 <span className={`inline-flex items-center gap-1.5 ${currentStatusConfig.badgeBg} ${currentStatusConfig.badgeText} px-2.5 py-0.5 rounded-full text-xs font-bold shadow-2xs`}>
                   <span className={`w-2 h-2 rounded-full ${currentStatusConfig.dotBg}`}></span>
-                  {currentStatusConfig.label}
+                  {selectedTooth.status === 'other' && selectedTooth.customProcedureName 
+                    ? selectedTooth.customProcedureName 
+                    : currentStatusConfig.label}
                 </span>
               </div>
             </div>
           </div>
+
+          {/* Bridge Spanning Info if applicable */}
+          {selectedTooth.status === 'bridge' && selectedTooth.bridgeSpan && (
+            <div className="mb-4 p-3 bg-teal-50 border border-teal-200 rounded-xl text-xs text-teal-900 flex items-center gap-2">
+              <span className="material-symbols-outlined text-teal-700 text-[18px]">linear_scale</span>
+              <div>
+                <p className="font-bold">Fixed Dental Bridge (جسر أسنان)</p>
+                <p className="text-[11px] text-teal-700 font-mono">Spans teeth: #{selectedTooth.bridgeSpan.join(', #')}</p>
+              </div>
+            </div>
+          )}
 
           {/* Treatment info */}
           <div className="space-y-4">
@@ -718,6 +962,210 @@ export const DentalChart: React.FC<DentalChartProps> = ({
           </div>
         </div>
       </div>
+
+      {/* ========================================================= */}
+      {/* 1. BRIDGE CONFIGURATION MODAL (Adjacent teeth selector)  */}
+      {/* ========================================================= */}
+      {isBridgeModalOpen && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[#0d9488] text-2xl">linear_scale</span>
+                <div>
+                  <h3 className="font-headline font-bold text-lg text-slate-900">
+                    Dental Bridge Configuration (جسر أسنان)
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Select contiguous adjacent teeth along the arch to connect
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsBridgeModalOpen(false)}
+                className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="p-3 bg-teal-50 border border-teal-200 rounded-xl text-xs text-teal-900 leading-relaxed">
+                <p className="font-bold flex items-center gap-1 mb-0.5">
+                  <span className="material-symbols-outlined text-[16px] text-teal-700">info</span>
+                  <span>Adjacent Constraint (شرط التجاور):</span>
+                </p>
+                <p>
+                  A dental bridge requires teeth to be <strong>strictly adjacent</strong> next to each other on the same arch without gaps.
+                  (الأسنان في الجسر يجب أن تكون متجاورة بجوار بعضها البعض مباشرة على نفس الفك).
+                </p>
+              </div>
+
+              {/* Arch Selection Grid */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+                  Select Adjacent Arch Teeth (الفك: {UPPER_ARCH_ORDER.includes(selectedToothId) ? 'العلوي (Maxillary)' : 'السفلي (Mandibular)'})
+                </label>
+                <div className="flex flex-wrap gap-1.5 justify-center p-3 bg-slate-50 rounded-xl border border-slate-200">
+                  {(UPPER_ARCH_ORDER.includes(selectedToothId) ? UPPER_ARCH_ORDER : LOWER_ARCH_ORDER).map((tId) => {
+                    const isSelected = selectedBridgeTeeth.includes(tId);
+                    return (
+                      <button
+                        key={tId}
+                        type="button"
+                        onClick={() => toggleToothInBridge(tId)}
+                        className={`w-10 h-11 rounded-lg flex flex-col items-center justify-center text-xs font-bold transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#0d9488] text-white shadow-xs scale-105 ring-2 ring-teal-500/40'
+                            : 'bg-white text-slate-700 border border-slate-200 hover:border-teal-400 hover:bg-teal-50/50'
+                        }`}
+                      >
+                        <span>{tId}</span>
+                        <span className="text-[9px] opacity-75 font-normal">
+                          {getToothType(tId).type === 'molar' ? 'M' : getToothType(tId).type === 'premolar' ? 'P' : getToothType(tId).type === 'canine' ? 'C' : 'I'}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Selected Bridge Summary */}
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
+                <span className="text-slate-600">Selected Span:</span>
+                <span className="font-mono font-bold text-[#0d9488] text-sm">
+                  {selectedBridgeTeeth.length > 0 ? selectedBridgeTeeth.map(t => `#${t}`).join(' ➔ ') : 'None'}
+                </span>
+              </div>
+
+              {/* Error Message if non-adjacent */}
+              {bridgeError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs flex items-center gap-2">
+                  <span className="material-symbols-outlined text-rose-600 text-[18px]">error</span>
+                  <span>{bridgeError}</span>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsBridgeModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleApplyBridge}
+                  disabled={!!bridgeError || selectedBridgeTeeth.length < 2}
+                  className={`px-5 py-2 rounded-xl text-white text-xs font-bold shadow-xs cursor-pointer flex items-center gap-1.5 ${
+                    bridgeError || selectedBridgeTeeth.length < 2
+                      ? 'bg-slate-300 cursor-not-allowed'
+                      : 'bg-[#0d9488] hover:bg-[#0f766e]'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px]">check</span>
+                  <span>Apply Bridge (تطبيق الجسر)</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* 2. OTHER PROCEDURE CUSTOM NAME MODAL                      */}
+      {/* ========================================================= */}
+      {isOtherModalOpen && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[#603813] text-2xl">more_horiz</span>
+                <div>
+                  <h3 className="font-headline font-bold text-lg text-slate-900">
+                    Custom Procedure (عملية أخرى)
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Tooth #{selectedToothId} - Define custom procedure name
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsOtherModalOpen(false)}
+                className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Procedure Name / اسم الإجراء أو العملية
+                </label>
+                <input
+                  type="text"
+                  value={customProcedureName}
+                  onChange={(e) => setCustomProcedureName(e.target.value)}
+                  placeholder="e.g. Veneer, Inlay, Onlay, Bleaching..."
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-[#f8fafc] text-sm text-slate-900 focus:outline-none focus:border-[#603813]"
+                />
+              </div>
+
+              {/* Quick Presets */}
+              <div>
+                <span className="block text-[11px] font-semibold text-slate-500 mb-1.5">
+                  Quick Presets (اختيارات سريعة):
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    'Veneer (فينير)',
+                    'Inlay / Onlay (إنلاي)',
+                    'Bleaching (تبييض)',
+                    'Gingivectomy (قص لثة)',
+                    'Ortho Bracket (تقويم)',
+                    'Space Maintainer (حافظ مسافة)',
+                    'Night Guard (واقي ليلي)'
+                  ].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setCustomProcedureName(preset)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
+                        customProcedureName === preset
+                          ? 'bg-[#eddcd2] border-[#603813] text-[#4a2c11] font-bold'
+                          : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsOtherModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleApplyOtherProcedure}
+                  disabled={!customProcedureName.trim()}
+                  className="px-5 py-2 rounded-xl bg-[#603813] hover:bg-[#4a2c11] text-white text-xs font-bold shadow-xs cursor-pointer flex items-center gap-1.5"
+                >
+                  <span className="material-symbols-outlined text-[16px]">check</span>
+                  <span>Save Procedure (حفظ الإجراء)</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
