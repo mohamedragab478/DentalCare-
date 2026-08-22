@@ -16,6 +16,8 @@ interface DoctorDashboardProps {
   onNavigate: (view: any) => void;
   onAddPatient?: () => void;
   onScheduleVisit?: (patient?: Patient) => void;
+  onAssignDoctor?: (roomId: number) => void;
+  onVacateDoctor?: (roomId: number) => void;
 }
 
 export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
@@ -30,7 +32,9 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
   onSelectPatient,
   onNavigate,
   onAddPatient,
-  onScheduleVisit
+  onScheduleVisit,
+  onAssignDoctor,
+  onVacateDoctor
 }) => {
   const { t, isRTL, lang } = useAppThemeLanguage();
 
@@ -468,34 +472,66 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
             </div>
 
             <div className="space-y-3">
-              {clinics.map((room) => (
-                <div
-                  key={room.id}
-                  className="p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-[#f8fafc] dark:bg-slate-800/60 flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-2.5">
-                    {room.doctorAvatar ? (
-                      <img src={room.doctorAvatar} alt={room.name} className="w-8 h-8 rounded-full object-cover border dark:border-slate-700" />
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-400">
-                        <span className="material-symbols-outlined text-[16px]">person_off</span>
+              {clinics.map((room) => {
+                const isCurrentDoctorRoom =
+                  room.doctorName === doctorProfile?.name ||
+                  (doctorProfile?.assignedClinic && room.name.toLowerCase() === doctorProfile.assignedClinic.toLowerCase());
+
+                return (
+                  <div
+                    key={room.id}
+                    className={`p-3 rounded-2xl border transition-all flex items-center justify-between gap-2 ${
+                      isCurrentDoctorRoom
+                        ? 'border-[#006194] dark:border-[#00a3e0] bg-blue-50/70 dark:bg-blue-950/40 ring-1 ring-[#006194]/20'
+                        : 'border-slate-200 dark:border-slate-800 bg-[#f8fafc] dark:bg-slate-800/60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      {room.doctorAvatar ? (
+                        <img src={room.doctorAvatar} alt={room.name} className="w-8 h-8 rounded-full object-cover border dark:border-slate-700 shrink-0" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-400 shrink-0">
+                          <span className="material-symbols-outlined text-[16px]">person_off</span>
+                        </div>
+                      )}
+                      <div className="truncate">
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{room.name}</p>
+                          {isCurrentDoctorRoom && (
+                            <span className="text-[10px] bg-[#006194] text-white px-1.5 py-0.2 rounded-md font-bold shrink-0">
+                              {isRTL ? 'عيادتك الحالية' : 'Active'}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                          {room.doctorName ? `${room.doctorName}` : (isRTL ? 'متاحة للعمل' : 'Available')}
+                        </p>
                       </div>
-                    )}
-                    <div>
-                      <p className="text-xs font-bold text-slate-900 dark:text-white">{room.name}</p>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                        {room.doctorName ? `${room.doctorName}` : (isRTL ? 'متاحة للعمل' : 'Available')}
-                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      {isCurrentDoctorRoom ? (
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#10b981] animate-pulse"></span>
+                      ) : onAssignDoctor ? (
+                        <button
+                          type="button"
+                          onClick={() => onAssignDoctor(room.id)}
+                          className="text-[11px] font-bold text-[#006194] dark:text-[#00a3e0] bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 px-2 py-1 rounded-lg transition-colors cursor-pointer active:scale-95"
+                          title={isRTL ? `الانتقال إلى ${room.name}` : `Move to ${room.name}`}
+                        >
+                          {isRTL ? 'انتقال هنا' : 'Move Here'}
+                        </button>
+                      ) : (
+                        <span
+                          className={`w-2.5 h-2.5 rounded-full ${
+                            room.status === 'occupied' ? 'bg-[#10b981]' : 'bg-slate-300 dark:bg-slate-600'
+                          }`}
+                        ></span>
+                      )}
                     </div>
                   </div>
-
-                  <span
-                    className={`w-2.5 h-2.5 rounded-full ${
-                      room.status === 'occupied' ? 'bg-[#10b981]' : 'bg-slate-300 dark:bg-slate-600'
-                    }`}
-                  ></span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 

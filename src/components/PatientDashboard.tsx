@@ -26,17 +26,25 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
   const nextVisitArabic = formatDateArabic(patient.nextVisit);
 
   const attendingDoctorName =
-    patient.attendingDoctor ||
     doctorProfile?.name ||
-    'Dr. Ahmed';
+    patient.attendingDoctor ||
+    'Dr. Ahmed Al-Sayed';
+
+  // Find the doctor's actual active room from clinics live roster or doctorProfile
+  const doctorAssignedRoom = clinics.find(
+    (c) =>
+      (doctorProfile?.name && c.doctorName === doctorProfile.name) ||
+      (attendingDoctorName && c.doctorName === attendingDoctorName)
+  );
 
   const attendingClinicName =
-    patient.attendingClinic ||
+    doctorAssignedRoom?.name ||
     doctorProfile?.assignedClinic ||
+    patient.attendingClinic ||
     (isRTL ? 'العيادة 1' : 'Clinic 1');
 
   const attendingClinicDisplay = isRTL
-    ? attendingClinicName.replace('Clinic', 'العيادة')
+    ? attendingClinicName.replace(/Clinic\s*(\d+)/i, 'العيادة $1')
     : attendingClinicName;
 
   return (

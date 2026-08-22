@@ -392,7 +392,7 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
                     <span className="font-semibold text-slate-800 dark:text-white">{isRTL ? 'الوقت:' : 'Time:'}</span> {patient.nextVisitTime || '10:30 AM'}
                   </p>
                   <p>
-                    <span className="font-semibold text-slate-800 dark:text-white">{t('doctor')}:</span> {patient.attendingDoctor || 'Dr. Ahmed'} • {patient.attendingClinic || 'Clinic 1'}
+                    <span className="font-semibold text-slate-800 dark:text-white">{t('doctor')}:</span> {patient.attendingDoctor || 'Dr. Ahmed'} • {isRTL ? (patient.attendingClinic || 'Clinic 1').replace(/Clinic\s*(\d+)/i, 'العيادة $1') : (patient.attendingClinic || 'Clinic 1')}
                   </p>
                 </div>
 

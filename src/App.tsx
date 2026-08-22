@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppView, Patient, ToothStatus, ClinicRoom, VisitRecord, MedicalImage, DoctorProfile } from './types';
 import { INITIAL_PATIENTS, CLINIC_ROOMS, INITIAL_DOCTOR } from './data/initialData';
+import { storage, subscribeToStorageUpdates } from './utils/storage';
 import { UnifiedHeader } from './components/UnifiedHeader';
 import { DoctorDashboard } from './components/DoctorDashboard';
 import { PatientTable } from './components/PatientTable';
@@ -26,26 +27,53 @@ export function App() {
   const [userRole, setUserRole] = useState<'doctor' | 'patient'>('doctor');
   const [currentView, setCurrentView] = useState<AppView>('auth-gateway');
 
-  // Attending Doctor Profile State
-  const [doctorProfile, setDoctorProfile] = useState<DoctorProfile>({
-    id: 'doc-01',
-    name: 'Dr. Ahmed Al-Sayed',
-    specialty: 'Prosthodontics & Implantology',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAxTdB6BFCRDU6qr8N5YlyqcvvBqAlixK076_tUMWhheQjfjcVCtO0UBEY8sL1jYC9cucKVnoLoEgJlDKaSn0Qb5FJkx7v8MdhtOBjzCb8dHppP7IhiJllCOCEHHLwVXSrsa5mcVTHwz5OLt5nCjCSdaOMEjmqz6mQGAz0pZXk-7oBvgitx-9e-JaGvGW1CTaWYwwuVfl_PBgRvo3t6bQ1DMA1TZCepbWvSxDJrfFFqBCZE6ilABoY5eg',
-    assignedClinic: 'Clinic 1',
-    phone: '+1 (555) 234-5678',
-    email: 'dr.ahmed@dentalcarepro.clinic',
-    consultationFee: 150,
-    bio: 'Specializing in complex restorative prosthodontics, digital smile design, and guided implant surgery with over 12 years of clinical excellence.'
-  });
+  // Attending Doctor Profile State (Loaded with Persistent Storage fallback)
+  const [doctorProfile, setDoctorProfile] = useState<DoctorProfile>(() => storage.getDoctorProfile());
 
   // Today's Queue Completed Status Tracking (خلصت البيشنت دا)
-  const [completedQueueIds, setCompletedQueueIds] = useState<string[]>([]);
+  const [completedQueueIds, setCompletedQueueIds] = useState<string[]>(() => storage.getCompletedQueue());
 
-  // Application Data State
-  const [patients, setPatients] = useState<Patient[]>(INITIAL_PATIENTS);
+  // Application Data State (Loaded with Persistent Storage fallback)
+  const [patients, setPatients] = useState<Patient[]>(() => storage.getPatients());
   const [selectedPatientId, setSelectedPatientId] = useState<string>('849201'); // Mohamed Ali
-  const [clinics, setClinics] = useState<ClinicRoom[]>(CLINIC_ROOMS);
+  const [clinics, setClinics] = useState<ClinicRoom[]>(() => storage.getClinics());
+
+  // Real-time synchronization across browser tabs and persistence to localStorage
+  useEffect(() => {
+    storage.setDoctorProfile(doctorProfile);
+  }, [doctorProfile]);
+
+  useEffect(() => {
+    storage.setPatients(patients);
+  }, [patients]);
+
+  useEffect(() => {
+    storage.setClinics(clinics);
+  }, [clinics]);
+
+  useEffect(() => {
+    storage.setCompletedQueue(completedQueueIds);
+  }, [completedQueueIds]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToStorageUpdates((type, payload) => {
+      if (type === 'DOCTOR_UPDATED' && payload) {
+        setDoctorProfile(payload);
+      } else if (type === 'CLINICS_UPDATED' && payload) {
+        setClinics(payload);
+      } else if (type === 'PATIENTS_UPDATED' && payload) {
+        setPatients(payload);
+      } else if (type === 'QUEUE_UPDATED' && payload) {
+        setCompletedQueueIds(payload);
+      } else if (type === 'FULL_SYNC' && payload) {
+        if (payload.doctor) setDoctorProfile(payload.doctor);
+        if (payload.clinics) setClinics(payload.clinics);
+        if (payload.patients) setPatients(payload.patients);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   // Modals & Edit State
   const [isConsultationOpen, setIsConsultationOpen] = useState(false);
@@ -586,6 +614,8 @@ export function App() {
                       onNavigate={(v) => setCurrentView(v)}
                       onAddPatient={handleOpenNewPatient}
                       onScheduleVisit={handleOpenScheduleVisit}
+                      onAssignDoctor={handleAssignDoctor}
+                      onVacateDoctor={handleVacateDoctor}
                     />
                   )}
 
