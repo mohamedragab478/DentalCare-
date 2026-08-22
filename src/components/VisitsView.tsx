@@ -169,7 +169,7 @@ export const VisitsView: React.FC<VisitsViewProps> = ({
                     <div className="flex flex-wrap items-center gap-4 text-[11px] text-slate-400">
                       <span className="flex items-center gap-1">
                         <span className="material-symbols-outlined text-[14px]">person</span>
-                        {t('doctor')}: {visit.doctorName || (isRTL ? 'د. أحمد السيد' : 'Dr. Ahmed')}
+                        {t('doctor')}: {visit.doctorName || 'Dr. Ahmed'}
                       </span>
                       {visit.clinicRoom && (
                         <span className="flex items-center gap-1">

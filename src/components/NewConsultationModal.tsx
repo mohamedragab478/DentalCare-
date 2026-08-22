@@ -60,7 +60,7 @@ export const NewConsultationModal: React.FC<NewConsultationModalProps> = ({
     const newVisit: VisitRecord = {
       id: `v-${Date.now()}`,
       date: formattedDate,
-      doctorName: isRTL ? 'د. أحمد السيد' : 'Dr. Ahmed Al-Sayed',
+      doctorName: 'Dr. Ahmed',
       procedure,
       notes,
       clinicRoom,

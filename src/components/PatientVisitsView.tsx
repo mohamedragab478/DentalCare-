@@ -99,7 +99,7 @@ export const PatientVisitsView: React.FC<PatientVisitsViewProps> = ({
                       )}
                     </div>
                     <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                      {t('doctor')}: {visit.doctorName || (isRTL ? 'د. أحمد السيد' : 'Dr. Ahmed')}
+                      {t('doctor')}: {visit.doctorName || 'Dr. Ahmed'}
                     </p>
                     <p className="text-xs text-slate-600 dark:text-slate-300 mt-2 bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
                       {visit.notes || (isRTL ? 'كشف دوري ومتابعة سريرية.' : 'Routine consultation and clinical exam.')}

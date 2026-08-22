@@ -28,7 +28,7 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
   const attendingDoctorName =
     patient.attendingDoctor ||
     doctorProfile?.name ||
-    (isRTL ? 'د. أحمد السيد' : 'Dr. Ahmed Al-Sayed');
+    'Dr. Ahmed';
 
   const attendingClinicName =
     patient.attendingClinic ||

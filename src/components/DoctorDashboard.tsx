@@ -103,7 +103,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
 
   const defaultAvatar = 'https://lh3.googleusercontent.com/aida-public/AB6AXuAxTdB6BFCRDU6qr8N5YlyqcvvBqAlixK076_tUMWhheQjfjcVCtO0UBEY8sL1jYC9cucKVnoLoEgJlDKaSn0Qb5FJkx7v8MdhtOBjzCb8dHppP7IhiJllCOCEHHLwVXSrsa5mcVTHwz5OLt5nCjCSdaOMEjmqz6mQGAz0pZXk-7oBvgitx-9e-JaGvGW1CTaWYwwuVfl_PBgRvo3t6bQ1DMA1TZCepbWvSxDJrfFFqBCZE6ilABoY5eg';
   const currentAvatar = doctorProfile?.avatar || defaultAvatar;
-  const currentDoctorName = doctorProfile?.name || (isRTL ? 'د. أحمد السيد' : 'Dr. Ahmed Al-Sayed');
+  const currentDoctorName = doctorProfile?.name || 'Dr. Ahmed';
   const currentSpecialty = doctorProfile?.specialty || (isRTL ? 'استشاري التركيبات وزراعة الأسنان' : 'Prosthodontist & Implant Specialist');
   const currentClinicName = doctorProfile?.assignedClinic || (isRTL ? 'العيادة 1' : 'Clinic 1');
 

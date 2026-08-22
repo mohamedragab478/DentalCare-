@@ -212,23 +212,43 @@ export const TopNav: React.FC<TopNavProps> = ({
                 {isDoctor ? (
                   <>
                     <div className="p-2.5 rounded-xl bg-blue-50/60 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900">
-                      <p className="font-semibold text-slate-800 dark:text-slate-200">Patient Arrived in Clinic</p>
-                      <p className="text-slate-500 dark:text-slate-400 mt-0.5">Mohamed Ali is in Chair for Clinic 1 consultation.</p>
+                      <p className="font-semibold text-slate-800 dark:text-slate-200">
+                        {isRTL ? "وصول المريض إلى العيادة" : "Patient Arrived in Clinic"}
+                      </p>
+                      <p className="text-slate-500 dark:text-slate-400 mt-0.5">
+                        {isRTL 
+                          ? `${patientName} متواجد حالياً في العيادة للكشف.` 
+                          : `${patientName} is in chair for clinical consultation.`}
+                      </p>
                     </div>
                     <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-700">
-                      <p className="font-semibold text-slate-800 dark:text-slate-200">Lab X-ray Available</p>
-                      <p className="text-slate-500 dark:text-slate-400 mt-0.5">Panoramic scan ready for patient #849201.</p>
+                      <p className="font-semibold text-slate-800 dark:text-slate-200">
+                        {isRTL ? "أشعة بانوراما جاهزة" : "Lab X-ray Available"}
+                      </p>
+                      <p className="text-slate-500 dark:text-slate-400 mt-0.5">
+                        {isRTL ? "تم تجهيز الأشعة البانورامية للمريض." : "Panoramic scan ready for patient review."}
+                      </p>
                     </div>
                   </>
                 ) : (
                   <>
                     <div className="p-2.5 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900">
-                      <p className="font-semibold text-slate-800 dark:text-slate-200">Upcoming Visit Scheduled</p>
-                      <p className="text-slate-500 dark:text-slate-400 mt-0.5">Dr. Ahmed scheduled your visit on 28 Aug 2026 at 10:30 AM.</p>
+                      <p className="font-semibold text-slate-800 dark:text-slate-200">
+                        {isRTL ? "تم تثبيت موعدك القادم" : "Upcoming Visit Scheduled"}
+                      </p>
+                      <p className="text-slate-500 dark:text-slate-400 mt-0.5">
+                        {isRTL 
+                          ? `قام ${doctorName} بتسجيل وتأكيد موعد زيارتك القادمة.`
+                          : `${doctorName} scheduled your upcoming consultation.`}
+                      </p>
                     </div>
                     <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-700">
-                      <p className="font-semibold text-slate-800 dark:text-slate-200">Dental Record Updated</p>
-                      <p className="text-slate-500 dark:text-slate-400 mt-0.5">Tooth #26 crown successfully documented in chart.</p>
+                      <p className="font-semibold text-slate-800 dark:text-slate-200">
+                        {isRTL ? "تحديث السجل الطبي" : "Dental Record Updated"}
+                      </p>
+                      <p className="text-slate-500 dark:text-slate-400 mt-0.5">
+                        {isRTL ? "تم توثيق فحص وحالة الأسنان بنجاح في ملفك." : "Tooth condition successfully documented in chart."}
+                      </p>
                     </div>
                   </>
                 )}

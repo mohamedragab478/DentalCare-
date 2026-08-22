@@ -379,7 +379,7 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({
               <div className="absolute bottom-3 left-3 z-20 bg-slate-950/85 backdrop-blur-md text-slate-200 border border-slate-700/80 text-xs px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-lg">
                 <span className="material-symbols-outlined text-[16px] text-[#00a3e0]">account_circle</span>
                 <span className="font-bold text-white">
-                  {isRTL ? currentCase.arabicPatientName : currentCase.patientName}
+                  {currentCase.patientName}
                 </span>
                 <span className="text-slate-500">•</span>
                 <span className="text-[11px] text-slate-300 font-medium">
@@ -401,7 +401,7 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({
                   }`}
                 >
                   <span className={`w-1.5 h-1.5 rounded-full ${selectedCaseIdx === idx ? 'bg-emerald-400' : 'bg-slate-400'}`} />
-                  <span>{isRTL ? c.arabicPatientName : c.patientName}</span>
+                  <span>{c.patientName}</span>
                 </button>
               ))}
             </div>
@@ -433,7 +433,7 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({
 
               <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-200 dark:border-slate-800/80 text-xs">
                 <span className="text-slate-500 dark:text-slate-400">
-                  {t('doctor')}: <strong className="text-slate-900 dark:text-white">{isRTL ? currentCase.arabicDoctor : currentCase.doctor}</strong> ({isRTL ? currentCase.arabicSpecialty : currentCase.specialty})
+                  {t('doctor')}: <strong className="text-slate-900 dark:text-white">{currentCase.doctor}</strong> ({isRTL ? currentCase.arabicSpecialty : currentCase.specialty})
                 </span>
                 <span className="text-slate-300 dark:text-slate-600 hidden sm:inline">•</span>
                 <span className="text-slate-500 dark:text-slate-400">
@@ -496,7 +496,7 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({
                         {isRTL ? room.name.replace('Clinic', 'عيادة') : room.name}
                       </span>
                       <h4 className="font-bold text-slate-900 dark:text-white text-base mt-0.5">
-                        {room.doctorName ? (isRTL ? (room.doctorName.includes('Ahmed') ? 'د. أحمد السيد' : room.doctorName.includes('Sarah') ? 'د. سارة' : 'د. محمد') : room.doctorName) : t('available_suite')}
+                        {room.doctorName ? room.doctorName : t('available_suite')}
                       </h4>
                     </div>
 

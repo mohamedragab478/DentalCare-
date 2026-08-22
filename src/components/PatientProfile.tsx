@@ -326,7 +326,7 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
                     <span className="font-semibold text-slate-800 dark:text-white">{isRTL ? 'الوقت:' : 'Time:'}</span> {patient.nextVisitTime || '10:30 AM'}
                   </p>
                   <p>
-                    <span className="font-semibold text-slate-800 dark:text-white">{t('doctor')}:</span> {patient.attendingDoctor || (isRTL ? 'د. أحمد' : 'Dr. Ahmed')} • {patient.attendingClinic || 'Clinic 1'}
+                    <span className="font-semibold text-slate-800 dark:text-white">{t('doctor')}:</span> {patient.attendingDoctor || 'Dr. Ahmed'} • {patient.attendingClinic || 'Clinic 1'}
                   </p>
                 </div>
 
@@ -413,7 +413,7 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
                     <div className="flex items-center gap-4 text-[11px] text-slate-400">
                       <span className="flex items-center gap-1">
                         <span className="material-symbols-outlined text-[14px]">person</span>
-                        {t('doctor')}: {v.doctorName || (isRTL ? 'د. أحمد السيد' : 'Dr. Ahmed')}
+                        {t('doctor')}: {v.doctorName || 'Dr. Ahmed'}
                       </span>
                       {v.cost && (
                         <span className="font-semibold text-slate-700 dark:text-slate-300">
