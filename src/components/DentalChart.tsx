@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { ToothRecord, ToothStatus } from '../types';
+import { ToothRecord, ToothStatus, VisitRecord } from '../types';
+import { useAppThemeLanguage } from '../context/ThemeLanguageContext';
 
 interface DentalChartProps {
   teeth: Record<number, ToothRecord>;
+  visits?: VisitRecord[];
   onUpdateTooth?: (
     toothId: number,
     status: ToothStatus,
@@ -64,16 +66,52 @@ export const getToothType = (toothId: number): { type: ToothType; arabicName: st
 
 export const DentalChart: React.FC<DentalChartProps> = ({
   teeth,
+  visits,
   onUpdateTooth,
   onBatchUpdateTeeth,
   isReadOnly = false,
   onSelectTooth,
   selectedToothId: controlledToothId
 }) => {
+  const { isRTL, t } = useAppThemeLanguage();
   const [internalSelectedId, setInternalSelectedId] = useState<number>(26);
   const selectedToothId = controlledToothId !== undefined && controlledToothId !== null ? controlledToothId : internalSelectedId;
   const [editingNotes, setEditingNotes] = useState<string>('');
   const [isEditingNotes, setIsEditingNotes] = useState<boolean>(false);
+
+  // Fallback sample visits if none are passed in standalone context
+  const resolvedVisits = visits !== undefined ? visits : [
+    {
+      id: 'v-fallback-1',
+      date: '18 Aug 2026',
+      doctorName: 'Dr. Ahmed',
+      procedure: isRTL ? 'حشو كمبوزيت (الضرس 26)' : 'Composite Filling (Tooth #26)',
+      notes: isRTL ? 'تم وضع حشو تجميلي على السطح الإطباقي للضرس 26.' : 'Composite filling applied to occlusal surface. Margin integrity good.',
+      status: 'completed' as const,
+      clinicRoom: isRTL ? 'العيادة 1' : 'Clinic 1',
+      cost: 180
+    },
+    {
+      id: 'v-fallback-2',
+      date: '02 Jun 2026',
+      doctorName: 'Dr. Mohamed',
+      procedure: isRTL ? 'تنظيف وإزالة جير وتلميع' : 'Routine Scale & Polish',
+      notes: isRTL ? 'تنظيف شامل للأسنان واللثة وتقديم نصائح للعناية اليومية.' : 'General scale and polish completed. Advised flossing frequency increase.',
+      status: 'completed' as const,
+      clinicRoom: isRTL ? 'العيادة 2' : 'Clinic 2',
+      cost: 110
+    },
+    {
+      id: 'v-fallback-3',
+      date: '15 Jan 2026',
+      doctorName: 'Dr. Mahmoud',
+      procedure: isRTL ? 'استشارة وكشف أشعة كامل' : 'Consultation & X-ray review',
+      notes: isRTL ? 'فحص شامل للفم والفكين وتشخيص أولي.' : 'Full mouth evaluation, identified incipient lesion on upper molar.',
+      status: 'completed' as const,
+      clinicRoom: isRTL ? 'العيادة 3' : 'Clinic 3',
+      cost: 95
+    }
+  ];
 
   // Modals / Configurator States for Bridge & Other procedures
   const [isBridgeModalOpen, setIsBridgeModalOpen] = useState<boolean>(false);
@@ -959,6 +997,74 @@ export const DentalChart: React.FC<DentalChartProps> = ({
                 </div>
               )}
             </div>
+          </div>
+        </div>
+
+        {/* Visit History Card (تاريخ الزيارات) */}
+        <div className="bg-white dark:bg-slate-900 border border-[#e2e8f0] dark:border-slate-800 rounded-2xl p-5 md:p-6 shadow-xs flex flex-col space-y-4">
+          <div className="border-b border-[#e2e8f0] dark:border-slate-800 pb-3 flex justify-between items-center">
+            <h3 className="font-headline font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+              <span className="material-symbols-outlined text-[#006194] dark:text-[#00a3e0] text-[20px]">calendar_month</span>
+              <span>{isRTL ? "تاريخ وسجل الزيارات" : "Visit History"}</span>
+            </h3>
+            <span className="text-[11px] font-bold text-[#006194] dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-full border border-blue-200 dark:border-blue-800">
+              {resolvedVisits.length} {isRTL ? "زيارات" : "Visits"}
+            </span>
+          </div>
+
+          <div className="space-y-3 max-h-[380px] overflow-y-auto pr-0.5">
+            {resolvedVisits.map((v) => (
+              <div
+                key={v.id}
+                className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-[#f8fafc] dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-800 transition-all shadow-2xs space-y-2"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-bold text-xs text-slate-900 dark:text-white flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[14px] text-slate-400">calendar_today</span>
+                    <span>{v.date}</span>
+                  </span>
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                      v.status === 'completed'
+                        ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                        : 'bg-blue-50 dark:bg-blue-950 text-[#006194] dark:text-blue-300 border-blue-200 dark:border-blue-800'
+                    }`}
+                  >
+                    {v.status === 'completed' ? (isRTL ? 'مكتملة' : 'Completed') : (isRTL ? 'مجدولة' : 'Scheduled')}
+                  </span>
+                </div>
+
+                <div>
+                  <h5 className="font-bold text-xs text-[#006194] dark:text-[#00a3e0]">
+                    {v.procedure}
+                  </h5>
+                  {v.notes && (
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 line-clamp-2 leading-relaxed">
+                      {v.notes}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pt-1.5 border-t border-slate-200/70 dark:border-slate-700/60">
+                  <span className="flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[13px]">person</span>
+                    <span>{v.doctorName || 'Dr. Ahmed'}</span>
+                  </span>
+                  {v.clinicRoom && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-200/70 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                      {v.clinicRoom}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {resolvedVisits.length === 0 && (
+              <div className="py-8 text-center text-slate-400 dark:text-slate-500 space-y-1">
+                <span className="material-symbols-outlined text-3xl">event_busy</span>
+                <p className="text-xs font-semibold">{isRTL ? "لا توجد زيارات سابقة مسجلة" : "No visits recorded"}</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -109,7 +109,9 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
   const currentAvatar = doctorProfile?.avatar || defaultAvatar;
   const currentDoctorName = doctorProfile?.name || 'Dr. Ahmed';
   const currentSpecialty = doctorProfile?.specialty || (isRTL ? 'استشاري التركيبات وزراعة الأسنان' : 'Prosthodontist & Implant Specialist');
-  const currentClinicName = doctorProfile?.assignedClinic || (isRTL ? 'العيادة 1' : 'Clinic 1');
+  const currentClinicName = doctorProfile?.assignedClinic
+    ? (isRTL ? doctorProfile.assignedClinic.replace(/Clinic\s*(\d+)/i, 'العيادة $1') : doctorProfile.assignedClinic)
+    : (isRTL ? 'خارج العيادة (غير مسكن)' : 'Off-duty (Roaming)');
 
   return (
     <div className="max-w-7xl mx-auto w-full space-y-8 animate-in fade-in duration-200 transition-colors">
@@ -120,7 +122,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
             <span>{t('welcome_back')}, {currentDoctorName}</span>
           </h1>
           <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mt-1">
-            {t('clinical_overview')} • {currentSpecialty} • {currentClinicName}
+            {t('clinical_overview')} • {currentSpecialty} • <strong className="text-slate-800 dark:text-slate-200">{currentClinicName}</strong>
           </p>
         </div>
 
@@ -148,97 +150,6 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
           )}
         </div>
       </header>
-
-      {/* Summary Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Today's Patients */}
-        <div 
-          onClick={() => onNavigate('doctor-patients')}
-          className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-[#e2e8f0] dark:border-slate-800 shadow-xs hover:border-[#006194] dark:hover:border-blue-700 transition-all cursor-pointer group"
-        >
-          <div className="flex justify-between items-start mb-3">
-            <span className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950 text-[#006194] dark:text-[#00a3e0] flex items-center justify-center group-hover:scale-110 transition-transform">
-              <span className="material-symbols-outlined text-[22px]">groups</span>
-            </span>
-            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
-              {t('active')}
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{t('total_patients')}</p>
-          <p className="text-2xl font-bold font-headline text-slate-900 dark:text-white mt-1">{patients.length}</p>
-          <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-2">
-            <span>{finishedIds.length} {t('finished')}</span>
-            <span className="font-bold text-[#006194] dark:text-[#00a3e0]">{patients.length - finishedIds.length} {t('waiting')}</span>
-          </div>
-        </div>
-
-        {/* Card 2: Next Appointments */}
-        <div 
-          onClick={() => onNavigate('doctor-visits')}
-          className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-[#e2e8f0] dark:border-slate-800 shadow-xs hover:border-[#006194] dark:hover:border-blue-700 transition-all cursor-pointer group"
-        >
-          <div className="flex justify-between items-start mb-3">
-            <span className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <span className="material-symbols-outlined text-[22px]">calendar_month</span>
-            </span>
-            <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950 px-2 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-800">
-              {t('scheduled')}
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{t('confirmed_appointment')}</p>
-          <p className="text-2xl font-bold font-headline text-slate-900 dark:text-white mt-1">
-            {patients.filter(p => !!p.nextVisit).length}
-          </p>
-          <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-2">
-            <span>{isRTL ? 'الموعد القادم: يوم 28' : 'Next: Day 28'}</span>
-            <span className="font-bold text-indigo-600 dark:text-indigo-400">{t('manage')}</span>
-          </div>
-        </div>
-
-        {/* Card 3: Clinic Operatories */}
-        <div 
-          onClick={() => onNavigate('doctor-clinics')}
-          className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-[#e2e8f0] dark:border-slate-800 shadow-xs hover:border-[#006194] dark:hover:border-blue-700 transition-all cursor-pointer group"
-        >
-          <div className="flex justify-between items-start mb-3">
-            <span className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <span className="material-symbols-outlined text-[22px]">clinical_notes</span>
-            </span>
-            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
-              {t('operatories')}
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{t('clinic_status')}</p>
-          <p className="text-2xl font-bold font-headline text-slate-900 dark:text-white mt-1">
-            {clinics.filter(c => c.status === 'occupied').length} / {clinics.length}
-          </p>
-          <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-2">
-            <span>{isRTL ? 'غرفة العيادة 1' : `Room ${currentClinicName}`}</span>
-            <span className="font-bold text-emerald-600 dark:text-emerald-400">{t('assigned')}</span>
-          </div>
-        </div>
-
-        {/* Card 4: Quick Schedule */}
-        <div 
-          onClick={() => onScheduleVisit ? onScheduleVisit() : onNavigate('doctor-visits')}
-          className="bg-linear-to-br from-[#006194] to-[#004b73] p-5 rounded-2xl text-white shadow-xs hover:shadow-md transition-all cursor-pointer group"
-        >
-          <div className="flex justify-between items-start mb-3">
-            <span className="w-10 h-10 rounded-xl bg-white/20 text-white flex items-center justify-center group-hover:scale-110 transition-transform">
-              <span className="material-symbols-outlined text-[22px]">calendar_add_on</span>
-            </span>
-            <span className="text-[11px] font-bold text-white bg-white/25 px-2 py-0.5 rounded-full">
-              {isRTL ? 'يوم 28' : 'Day 28'}
-            </span>
-          </div>
-          <p className="text-xs text-blue-100 font-medium">{t('schedule_visit')}</p>
-          <p className="text-lg font-bold font-headline text-white mt-1">{t('quick_preset_day28')}</p>
-          <div className="mt-3 flex items-center justify-between text-[11px] text-blue-200 border-t border-white/20 pt-2">
-            <span>{t('next_visit_countdown')}</span>
-            <span className="font-bold text-white">{t('click_to_open')}</span>
-          </div>
-        </div>
-      </div>
 
       {/* Main Grid: Patient Queue (8 cols) + Clinic Operatories (4 cols) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -477,12 +388,20 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                   room.doctorName === doctorProfile?.name ||
                   (doctorProfile?.assignedClinic && room.name.toLowerCase() === doctorProfile.assignedClinic.toLowerCase());
 
+                const isOccupiedByOther = Boolean(
+                  room.doctorName &&
+                  room.doctorName !== doctorProfile?.name &&
+                  room.status === 'occupied'
+                );
+
                 return (
                   <div
                     key={room.id}
                     className={`p-3 rounded-2xl border transition-all flex items-center justify-between gap-2 ${
                       isCurrentDoctorRoom
                         ? 'border-[#006194] dark:border-[#00a3e0] bg-blue-50/70 dark:bg-blue-950/40 ring-1 ring-[#006194]/20'
+                        : isOccupiedByOther
+                        ? 'border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 opacity-90'
                         : 'border-slate-200 dark:border-slate-800 bg-[#f8fafc] dark:bg-slate-800/60'
                     }`}
                   >
@@ -491,32 +410,64 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                         <img src={room.doctorAvatar} alt={room.name} className="w-8 h-8 rounded-full object-cover border dark:border-slate-700 shrink-0" />
                       ) : (
                         <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-400 shrink-0">
-                          <span className="material-symbols-outlined text-[16px]">person_off</span>
+                          <span className="material-symbols-outlined text-[16px]">
+                            {isOccupiedByOther ? 'person' : 'meeting_room'}
+                          </span>
                         </div>
                       )}
                       <div className="truncate">
                         <div className="flex items-center gap-1.5">
                           <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{room.name}</p>
                           {isCurrentDoctorRoom && (
-                            <span className="text-[10px] bg-[#006194] text-white px-1.5 py-0.2 rounded-md font-bold shrink-0">
+                            <span className="text-[10px] bg-[#006194] text-white px-1.5 py-0.5 rounded-md font-bold shrink-0">
                               {isRTL ? 'عيادتك الحالية' : 'Active'}
+                            </span>
+                          )}
+                          {isOccupiedByOther && (
+                            <span className="text-[10px] bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-1.5 py-0.5 rounded-md font-semibold shrink-0">
+                              {isRTL ? 'مشغولة' : 'Occupied'}
                             </span>
                           )}
                         </div>
                         <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                          {room.doctorName ? `${room.doctorName}` : (isRTL ? 'متاحة للعمل' : 'Available')}
+                          {isCurrentDoctorRoom
+                            ? (isRTL ? 'جاهز لاستقبال الكشوفات' : 'Ready for patients')
+                            : room.doctorName
+                            ? `${room.doctorName}`
+                            : (isRTL ? 'متاحة للانتقال' : 'Available for check-in')}
                         </p>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
                       {isCurrentDoctorRoom ? (
-                        <span className="w-2.5 h-2.5 rounded-full bg-[#10b981] animate-pulse"></span>
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-[#10b981] animate-pulse" title={isRTL ? 'عيادة نشطة' : 'Active'}></span>
+                          {onVacateDoctor && (
+                            <button
+                              type="button"
+                              onClick={() => onVacateDoctor(room.id)}
+                              className="text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/50 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-800/70 px-2 py-1 rounded-lg transition-all cursor-pointer active:scale-95 flex items-center gap-1 shadow-2xs"
+                              title={isRTL ? `مغادرة ${room.name}` : `Leave ${room.name}`}
+                            >
+                              <span className="material-symbols-outlined text-[13px]">logout</span>
+                              <span>{isRTL ? 'مغادرة' : 'Leave'}</span>
+                            </button>
+                          )}
+                        </div>
+                      ) : isOccupiedByOther ? (
+                        <div
+                          className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-700/60 text-slate-500 dark:text-slate-400 text-[11px] font-medium border border-slate-200 dark:border-slate-700 cursor-not-allowed select-none"
+                          title={isRTL ? `مشغولة بواسطة ${room.doctorName} (لا يمكن الانتقال)` : `Occupied by ${room.doctorName} (Cannot move)`}
+                        >
+                          <span className="material-symbols-outlined text-[14px]">lock</span>
+                          <span className="hidden sm:inline">{isRTL ? 'مشغولة' : 'Occupied'}</span>
+                        </div>
                       ) : onAssignDoctor ? (
                         <button
                           type="button"
                           onClick={() => onAssignDoctor(room.id)}
-                          className="text-[11px] font-bold text-[#006194] dark:text-[#00a3e0] bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 px-2 py-1 rounded-lg transition-colors cursor-pointer active:scale-95"
+                          className="text-[11px] font-bold text-[#006194] dark:text-[#00a3e0] bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 border border-[#006194]/30 dark:border-[#00a3e0]/30 hover:border-[#006194] px-2.5 py-1 rounded-lg transition-colors cursor-pointer active:scale-95 shadow-2xs"
                           title={isRTL ? `الانتقال إلى ${room.name}` : `Move to ${room.name}`}
                         >
                           {isRTL ? 'انتقال هنا' : 'Move Here'}

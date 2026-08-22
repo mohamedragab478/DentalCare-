@@ -300,9 +300,14 @@ export const DoctorSettingsView: React.FC<DoctorSettingsViewProps> = ({
                 onChange={(e) => setFormData(prev => ({ ...prev, assignedClinic: e.target.value }))}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-[#006194]"
               >
-                {clinics.map((c) => (
-                  <option key={c.id} value={c.name}>{c.name}</option>
-                ))}
+                {clinics.map((c) => {
+                  const isOccupiedByOther = Boolean(c.doctorName && c.doctorName !== doctorProfile.name && c.status === 'occupied');
+                  return (
+                    <option key={c.id} value={c.name} disabled={isOccupiedByOther}>
+                      {c.name} {isOccupiedByOther ? (isRTL ? `(مشغولة: ${c.doctorName})` : `(Occupied: ${c.doctorName})`) : ''}
+                    </option>
+                  );
+                })}
               </select>
             </div>
 

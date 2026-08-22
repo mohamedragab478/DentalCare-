@@ -34,7 +34,9 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
   const doctorName = doctorProfile?.name || 'Dr. Ahmed Al-Sayed';
   const doctorAvatar = doctorProfile?.avatar || defaultDoctorAvatar;
   const doctorSpecialty = doctorProfile?.specialty || (isRTL ? 'استشاري التركيبات والزراعة' : 'Prosthodontist & Implant Specialist');
-  const doctorClinic = doctorProfile?.assignedClinic || (isRTL ? 'العيادة 1' : 'Clinic 1');
+  const doctorClinic = doctorProfile?.assignedClinic
+    ? (isRTL ? doctorProfile.assignedClinic.replace(/Clinic\s*(\d+)/i, 'العيادة $1') : doctorProfile.assignedClinic)
+    : (isRTL ? 'خارج العيادة' : 'Off-duty');
 
   const patientName = activePatient?.name || 'Mohamed Ali';
   const patientAvatar = activePatient?.avatar;
@@ -111,33 +113,10 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
             </div>
           </div>
 
-          {/* 2. Primary Navigation Tabs */}
-          <nav className="flex items-center gap-1 sm:gap-2 overflow-x-auto py-1 no-scrollbar flex-1 justify-center max-w-2xl">
-            {navItems.map((item) => {
-              const isActive = (item as any).activeOn 
-                ? (item as any).activeOn.includes(currentView) 
-                : currentView === item.id;
+          {/* Spacer */}
+          <div className="flex-1" />
 
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => onNavigate(item.id)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap cursor-pointer ${
-                    isActive
-                      ? 'bg-[#006194] text-white'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-[18px]">
-                    {item.icon}
-                  </span>
-                  <span>{item.label}</span>
-                </button>
-              );
-            })}
-          </nav>
-
-          {/* 3. Action Buttons & Quick Utilities */}
+          {/* 2. Action Buttons & Quick Utilities */}
           <div className="flex items-center gap-2 shrink-0">
             {/* Quick Actions (Doctor only) */}
             {isDoctor && (

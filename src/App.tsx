@@ -470,10 +470,15 @@ export function App() {
     );
   };
 
-  // Clinic Management: Doctor restricted to one clinic, cannot kick out other doctors
+  // Clinic Management: Doctor restricted to one clinic, cannot move into an occupied clinic
   const handleAssignDoctor = (roomId: number) => {
     const targetRoom = clinics.find((c) => c.id === roomId);
     if (!targetRoom) return;
+
+    // Validation: Cannot take a room that is already occupied by another doctor
+    if (targetRoom.doctorName && targetRoom.doctorName !== doctorProfile.name && targetRoom.status === 'occupied') {
+      return;
+    }
 
     const newClinicName = targetRoom.name;
 
@@ -523,30 +528,54 @@ export function App() {
     );
   };
 
-  const handleVacateDoctor = (roomId: number) => {
-    const targetRoom = clinics.find((c) => c.id === roomId);
-    if (!targetRoom) return;
+  const handleVacateDoctor = (roomId?: number) => {
+    const activeClinic = doctorProfile.assignedClinic;
 
-    setDoctorProfile((prev) => ({
-      ...prev,
+    // Update Doctor Profile
+    const updatedDoctor: DoctorProfile = {
+      ...doctorProfile,
       assignedClinic: ''
-    }));
+    };
+    setDoctorProfile(updatedDoctor);
 
-    setClinics((prev) =>
-      prev.map((room) => {
-        if (room.id === roomId && (room.doctorName === doctorProfile.name || room.doctorName === INITIAL_DOCTOR.name)) {
-          return {
-            ...room,
-            status: 'available',
-            doctorName: undefined,
-            doctorAvatar: undefined,
-            doctorSpecialty: undefined,
-            currentPatient: undefined
-          };
-        }
-        return room;
-      })
-    );
+    // Update Clinics roster
+    const updatedClinics = clinics.map((room) => {
+      const isTarget = roomId
+        ? room.id === roomId
+        : (
+            room.doctorName === doctorProfile.name ||
+            (activeClinic && room.name.toLowerCase() === activeClinic.toLowerCase()) ||
+            room.doctorName === INITIAL_DOCTOR.name
+          );
+
+      if (isTarget) {
+        return {
+          ...room,
+          status: 'available' as const,
+          doctorName: undefined,
+          doctorAvatar: undefined,
+          doctorSpecialty: undefined,
+          currentPatient: undefined
+        };
+      }
+      return room;
+    });
+    setClinics(updatedClinics);
+
+    // Update Patients attendingClinic
+    const updatedPatients = patients.map((p) => {
+      if (!p.attendingDoctor || p.attendingDoctor.includes('Ahmed') || p.attendingDoctor === doctorProfile.name) {
+        return {
+          ...p,
+          attendingClinic: ''
+        };
+      }
+      return p;
+    });
+    setPatients(updatedPatients);
+
+    // Sync state
+    storage.syncAll(updatedDoctor, updatedClinics, updatedPatients);
   };
 
   // Determine if viewing outside auth view

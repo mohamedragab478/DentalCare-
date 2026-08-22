@@ -84,6 +84,7 @@ export const PatientDentalRecord: React.FC<PatientDentalRecordProps> = ({
       <div className="space-y-6">
         <DentalChart
           teeth={patient.teeth}
+          visits={patient.visits}
           isReadOnly={true}
         />
       </div>

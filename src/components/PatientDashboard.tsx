@@ -37,15 +37,17 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
       (attendingDoctorName && c.doctorName === attendingDoctorName)
   );
 
+  const isDoctorInClinic = Boolean(doctorAssignedRoom?.name || doctorProfile?.assignedClinic);
+
   const attendingClinicName =
     doctorAssignedRoom?.name ||
     doctorProfile?.assignedClinic ||
     patient.attendingClinic ||
     (isRTL ? 'العيادة 1' : 'Clinic 1');
 
-  const attendingClinicDisplay = isRTL
-    ? attendingClinicName.replace(/Clinic\s*(\d+)/i, 'العيادة $1')
-    : attendingClinicName;
+  const attendingClinicDisplay = isDoctorInClinic
+    ? (isRTL ? attendingClinicName.replace(/Clinic\s*(\d+)/i, 'العيادة $1') : attendingClinicName)
+    : (isRTL ? 'في انتظار تسكين العيادة (الطبيب في استراحة)' : 'Awaiting operatory (Doctor on break)');
 
   return (
     <div className="max-w-7xl mx-auto w-full space-y-8 pb-12 transition-colors">
@@ -181,9 +183,13 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
                 <span>{appointmentCountdown.descriptionArabic}</span>
               </p>
               <p className="text-[11px] text-blue-200 leading-relaxed">
-                {isRTL 
-                  ? `كشف واستشارة ومتابعة مع ${attendingDoctorName} في ${attendingClinicDisplay}.`
-                  : `Follow-up consultation & evaluation with ${attendingDoctorName} at ${attendingClinicName}.`}
+                {isDoctorInClinic
+                  ? (isRTL 
+                      ? `كشف واستشارة ومتابعة مع ${attendingDoctorName} في ${attendingClinicDisplay}.`
+                      : `Follow-up consultation & evaluation with ${attendingDoctorName} at ${attendingClinicName}.`)
+                  : (isRTL
+                      ? `طبيبك ${attendingDoctorName} في استراحة حالياً، وسيتم توجيهك لعيادته فور تسجيل دخوله.`
+                      : `Your doctor ${attendingDoctorName} is currently on break, clinic room will be assigned shortly.`)}
               </p>
             </div>
           </div>

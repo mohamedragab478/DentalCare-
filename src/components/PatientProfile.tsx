@@ -214,15 +214,6 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
                 <span>{t('edit_patient')}</span>
               </button>
             )}
-            {onUploadImage && (
-              <button
-                onClick={onUploadImage}
-                className="px-3.5 py-2 bg-white dark:bg-slate-800 border border-[#e2e8f0] dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-xs font-semibold flex items-center gap-1.5 shadow-2xs cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[16px]">upload</span>
-                <span>{t('upload_xray')}</span>
-              </button>
-            )}
             {onAddVisit && (
               <button
                 onClick={onAddVisit}
@@ -261,6 +252,7 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
         <div className="space-y-6">
           <DentalChart 
             teeth={patient.teeth} 
+            visits={patient.visits}
             onUpdateTooth={onUpdateTooth}
             onBatchUpdateTeeth={onBatchUpdateTeeth}
             isReadOnly={isReadOnly}
@@ -277,15 +269,6 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
                   {isRTL ? "أشعة البانوراما والصور السريرية" : "Intraoral photographs and digital panoramic films"}
                 </p>
               </div>
-              {!isReadOnly && onUploadImage && (
-                <button
-                  onClick={onUploadImage}
-                  className="px-3.5 py-1.5 bg-white dark:bg-slate-800 border border-[#e2e8f0] dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-xs font-semibold flex items-center gap-1.5 shadow-2xs cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-[16px]">add_a_photo</span>
-                  <span>{t('upload_xray')}</span>
-                </button>
-              )}
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
@@ -539,10 +522,10 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
             {!isReadOnly && onUploadImage && (
               <button
                 onClick={onUploadImage}
-                className="px-3.5 py-1.5 bg-[#006194] text-white rounded-xl text-xs font-semibold hover:bg-[#004b73] flex items-center gap-1.5 cursor-pointer"
+                className="px-3.5 py-1.5 bg-[#006194] text-white rounded-xl text-xs font-semibold hover:bg-[#004b73] flex items-center gap-1.5 cursor-pointer shadow-2xs"
               >
                 <span className="material-symbols-outlined text-[16px]">add_a_photo</span>
-                <span>{t('upload_xray')}</span>
+                <span>{isRTL ? "إضافة أشعة جديدة" : "Add New Scan"}</span>
               </button>
             )}
           </div>
@@ -576,6 +559,18 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
                 </div>
               </div>
             ))}
+
+            {!isReadOnly && onUploadImage && (
+              <div
+                onClick={onUploadImage}
+                className="rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 min-h-[160px] cursor-pointer hover:bg-blue-50/50 dark:hover:bg-slate-800 hover:border-[#006194] transition-all flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 hover:text-[#006194] gap-2 p-4"
+              >
+                <div className="w-10 h-10 rounded-full bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center shadow-2xs">
+                  <span className="material-symbols-outlined text-xl">add</span>
+                </div>
+                <span className="text-xs font-bold">{isRTL ? "إضافة أشعة جديدة" : "Add New Scan"}</span>
+              </div>
+            )}
           </div>
         </div>
       )}
