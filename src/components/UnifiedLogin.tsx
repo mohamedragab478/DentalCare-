@@ -1,22 +1,35 @@
 import React, { useState, useMemo } from 'react';
-import { Patient } from '../types';
+import { Patient, DoctorProfile } from '../types';
+import { DOCTORS_LIST } from '../data/initialData';
 import { useAppThemeLanguage } from '../context/ThemeLanguageContext';
+
+// Standard Doctor Account Credentials & Passwords
+export const DOCTOR_CREDENTIALS: Record<string, { pass: string; docId: string }> = {
+  'doc-01': { pass: 'clinicPass2026', docId: 'doc-01' },
+  'doc-02': { pass: 'clinicPass2026', docId: 'doc-02' },
+  'doc-03': { pass: 'clinicPass2026', docId: 'doc-03' },
+  'ahmed': { pass: 'clinicPass2026', docId: 'doc-01' },
+  'mohamed': { pass: 'clinicPass2026', docId: 'doc-02' },
+  'mahmoud': { pass: 'clinicPass2026', docId: 'doc-03' }
+};
 
 interface UnifiedLoginProps {
   patients?: Patient[];
-  onDoctorLoginSuccess: () => void;
+  doctors?: DoctorProfile[];
+  onDoctorLoginSuccess: (doctorId?: string) => void;
   onPatientLoginSuccess: (patientId: string) => void;
 }
 
 export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
   patients = [],
+  doctors = DOCTORS_LIST,
   onDoctorLoginSuccess,
   onPatientLoginSuccess
 }) => {
   const { t, isRTL } = useAppThemeLanguage();
 
   const [identifier, setIdentifier] = useState('DOC-101');
-  const [password, setPassword] = useState('••••••••••••');
+  const [password, setPassword] = useState('clinicPass2026');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -30,13 +43,32 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
     if (!cleanInput) return 'unknown';
 
     // Doctor patterns
+    const doctorMatch = doctors.find((d) => {
+      const docDigits = d.id.replace(/\D/g, '');
+      return (
+        d.id.toLowerCase() === cleanInput ||
+        d.email.toLowerCase() === cleanInput ||
+        d.name.toLowerCase().includes(cleanInput) ||
+        (digitsOnly.length > 0 && docDigits.endsWith(digitsOnly)) ||
+        cleanInput === `doc-${docDigits}` ||
+        cleanInput === `doc-10${docDigits}` ||
+        cleanInput === `10${docDigits}` ||
+        (cleanInput === 'doc-101' && d.id === 'doc-01') ||
+        (cleanInput === 'doc-102' && d.id === 'doc-02') ||
+        (cleanInput === 'doc-103' && d.id === 'doc-03')
+      );
+    });
+
     if (
+      doctorMatch ||
       cleanInput.startsWith('doc') ||
       cleanInput.includes('doctor') ||
       cleanInput.includes('admin') ||
       cleanInput.startsWith('dr') ||
       cleanInput.includes('@dentalcare') ||
-      cleanInput === '101'
+      cleanInput === '101' ||
+      cleanInput === '102' ||
+      cleanInput === '103'
     ) {
       return 'doctor';
     }
@@ -58,7 +90,7 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
     }
 
     return 'unknown';
-  }, [cleanInput, digitsOnly, patients]);
+  }, [cleanInput, digitsOnly, patients, doctors]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,26 +99,60 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
     if (!cleanInput) {
       setErrorMsg(
         isRTL
-          ? 'يرجى إدخال الرقم التعريفي للطبيب أو رقم ملف المريض أو رقم الهاتف.'
-          : 'Please enter your Doctor ID, Email, Patient ID, or Phone Number.'
+          ? 'يرجى إدخال اسم المستخدم أو كود الطبيب أو رقم ملف المريض.'
+          : 'Please enter your Doctor ID, Email, Patient File #, or Phone Number.'
       );
       return;
     }
 
-    // 1. Check if Doctor login
-    if (
-      cleanInput.startsWith('doc') ||
-      cleanInput.includes('doctor') ||
-      cleanInput.includes('admin') ||
-      cleanInput.startsWith('dr') ||
-      cleanInput.includes('@dentalcare') ||
-      cleanInput === '101'
-    ) {
-      onDoctorLoginSuccess();
+    if (!password || password.trim().length === 0) {
+      setErrorMsg(
+        isRTL
+          ? 'يرجى إدخال كلمة المرور للمتابعة.'
+          : 'Please enter your password.'
+      );
       return;
     }
 
-    // 2. Check if Patient login
+    const trimmedPassword = password.trim();
+
+    // 1. Check if input matches any Doctor
+    const matchedDoctor = doctors.find((d) => {
+      const docDigits = d.id.replace(/\D/g, '');
+      return (
+        d.id.toLowerCase() === cleanInput ||
+        d.email.toLowerCase() === cleanInput ||
+        d.name.toLowerCase().includes(cleanInput) ||
+        (digitsOnly.length > 0 && docDigits.endsWith(digitsOnly)) ||
+        cleanInput === `doc-${docDigits}` ||
+        cleanInput === `doc-10${docDigits}` ||
+        cleanInput === `10${docDigits}` ||
+        (cleanInput === 'doc-101' && d.id === 'doc-01') ||
+        (cleanInput === 'doc-102' && d.id === 'doc-02') ||
+        (cleanInput === 'doc-103' && d.id === 'doc-03') ||
+        (cleanInput.includes('ahmed') && d.id === 'doc-01') ||
+        (cleanInput.includes('mohamed') && d.id === 'doc-02') ||
+        (cleanInput.includes('mahmoud') && d.id === 'doc-03')
+      );
+    });
+
+    if (matchedDoctor) {
+      // STRICT PASSWORD CHECK FOR DOCTORS
+      const validDoctorPasswords = ['clinicPass2026', 'admin123', 'doctor2026', '123456'];
+      if (!validDoctorPasswords.includes(trimmedPassword)) {
+        setErrorMsg(
+          isRTL
+            ? 'كلمة المرور غير صحيحة لحساب هذا الطبيب. كلمة المرور الصحيحة للتجربة هي: clinicPass2026'
+            : 'Incorrect password for this doctor account. Valid password is: clinicPass2026'
+        );
+        return;
+      }
+
+      onDoctorLoginSuccess(matchedDoctor.id);
+      return;
+    }
+
+    // 2. Check if input matches any Patient
     const matchedPatient = patients.find(
       (p) =>
         p.id.toLowerCase() === cleanInput ||
@@ -96,29 +162,49 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
     );
 
     if (matchedPatient) {
+      // STRICT PASSWORD CHECK FOR PATIENTS
+      const validPatientPasswords = ['patient2026', 'patient123', 'clinicPass2026', '123456'];
+      if (!validPatientPasswords.includes(trimmedPassword)) {
+        setErrorMsg(
+          isRTL
+            ? 'كلمة المرور غير صحيحة لملف المريض. كلمة المرور الصحيحة للتجربة هي: patient2026'
+            : 'Incorrect password for patient portal. Valid password is: patient2026'
+        );
+        return;
+      }
+
       onPatientLoginSuccess(matchedPatient.id);
       return;
     }
 
-    // Fallback: If 6-digit ID or number was entered but not found in mock list
-    if (patients.length > 0 && /^\d{4,10}$/.test(digitsOnly)) {
-      onPatientLoginSuccess(patients[0].id);
+    // 3. Fallback check for newly registered patients by exact ID
+    const anyPatientById = patients.find((p) => p.id === identifier.trim());
+    if (anyPatientById) {
+      const validPatientPasswords = ['patient2026', 'patient123', 'clinicPass2026', '123456'];
+      if (!validPatientPasswords.includes(trimmedPassword)) {
+        setErrorMsg(
+          isRTL
+            ? 'كلمة المرور غير صحيحة لملف المريض.'
+            : 'Incorrect password for patient portal.'
+        );
+        return;
+      }
+
+      onPatientLoginSuccess(anyPatientById.id);
       return;
     }
 
-    // If ambiguous, check if user wrote something doctor-like
-    if (cleanInput.includes('ahmed') || cleanInput.includes('clinic')) {
-      onDoctorLoginSuccess();
-      return;
-    }
-
-    // Default to doctor if standard demo, otherwise first patient
-    onDoctorLoginSuccess();
+    // If identifier is completely invalid
+    setErrorMsg(
+      isRTL
+        ? 'اسم المستخدم أو كود الطبيب غير موجود. يرجى التأكد من البيانات المدخلة.'
+        : 'User not found. Please check your Doctor ID, Patient File #, or phone number.'
+    );
   };
 
   // Fast autofill helpers for testing
-  const handleAutofillDoctor = () => {
-    setIdentifier('DOC-101');
+  const handleAutofillDoctor = (docId: string, customDocIdFormatted: string) => {
+    setIdentifier(customDocIdFormatted);
     setPassword('clinicPass2026');
     setErrorMsg(null);
   };
@@ -168,9 +254,9 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
 
       {/* Error notification */}
       {errorMsg && (
-        <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
-          <span className="material-symbols-outlined text-[18px]">error</span>
-          <span>{errorMsg}</span>
+        <div className="mb-4 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2 animate-in fade-in">
+          <span className="material-symbols-outlined text-[18px] text-rose-600 shrink-0 mt-0.5">error</span>
+          <span className="font-medium leading-relaxed">{errorMsg}</span>
         </div>
       )}
 
@@ -209,7 +295,10 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
             <input
               type={showPassword ? 'text' : 'password'}
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setErrorMsg(null);
+              }}
               required
               className={`w-full ${isRTL ? 'pr-11 pl-11' : 'pl-11 pr-11'} py-3 rounded-xl border border-slate-200 bg-[#f8fafc] text-slate-900 text-sm focus:outline-none focus:border-[#006194] focus:ring-2 focus:ring-[#006194]/20 transition-all font-medium placeholder:text-slate-400`}
               placeholder={t('password_placeholder')}
@@ -265,45 +354,81 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
           {t('quick_test_accounts')}
         </p>
 
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={handleAutofillDoctor}
-            className={`p-2.5 rounded-xl border text-start transition-all cursor-pointer flex items-center gap-2 ${
-              cleanInput === 'doc-101' || cleanInput.includes('doc')
-                ? 'bg-blue-50/80 border-[#006194] text-[#006194]'
-                : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-            }`}
-          >
-            <div className="w-7 h-7 rounded-lg bg-[#006194] text-white flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-[16px]">stethoscope</span>
-            </div>
-            <div className="overflow-hidden">
-              <p className="text-xs font-bold truncate">{isRTL ? "حساب الطبيب" : "Doctor Login"}</p>
-              <p className="text-[10px] text-slate-500 font-mono truncate">DOC-101</p>
-            </div>
-          </button>
+        {/* Doctors Selector */}
+        <div className="space-y-1.5 mb-2.5">
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+            {isRTL ? "أطباء المركز (اضغط لتعبئة البيانات الصحيحة):" : "Clinic Doctors (Click to autofill):"}
+          </span>
+          <div className="grid grid-cols-3 gap-1.5">
+            {doctors.map((doc, idx) => {
+              const docCode = `DOC-10${idx + 1}`;
+              const isSelected = cleanInput.includes(docCode.toLowerCase()) || cleanInput.includes(doc.id.toLowerCase());
+              return (
+                <button
+                  key={doc.id}
+                  type="button"
+                  onClick={() => handleAutofillDoctor(doc.id, docCode)}
+                  className={`p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center ${
+                    isSelected
+                      ? 'bg-blue-50 border-[#006194] text-[#006194] font-bold'
+                      : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                  }`}
+                  title={doc.name}
+                >
+                  <span className="text-[11px] font-bold truncate max-w-full">
+                    {doc.name.split(' ')[1] || doc.name}
+                  </span>
+                  <span className="text-[9px] text-slate-500 font-mono">{docCode}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
-          <button
-            type="button"
-            onClick={() => handleAutofillPatient('849201')}
-            className={`p-2.5 rounded-xl border text-start transition-all cursor-pointer flex items-center gap-2 ${
-              cleanInput === '849201' || cleanInput.includes('849201')
-                ? 'bg-emerald-50/80 border-emerald-600 text-emerald-800'
-                : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-            }`}
-          >
-            <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-[16px]">person</span>
-            </div>
-            <div className="overflow-hidden">
-              <p className="text-xs font-bold truncate">{isRTL ? "حساب المريض" : "Patient Portal"}</p>
-              <p className="text-[10px] text-slate-500 font-mono truncate">#849201</p>
-            </div>
-          </button>
+        {/* Patients Selector */}
+        <div className="space-y-1.5">
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+            {isRTL ? "ملفات المرضى:" : "Patient Portals:"}
+          </span>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => handleAutofillPatient('849201')}
+              className={`p-2.5 rounded-xl border text-start transition-all cursor-pointer flex items-center gap-2 ${
+                cleanInput === '849201'
+                  ? 'bg-emerald-50 border-emerald-600 text-emerald-800 font-bold'
+                  : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              <div className="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[14px]">person</span>
+              </div>
+              <div className="overflow-hidden">
+                <p className="text-xs font-bold truncate">Mohamed Ali</p>
+                <p className="text-[9px] text-slate-500 font-mono">#849201</p>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleAutofillPatient('102943')}
+              className={`p-2.5 rounded-xl border text-start transition-all cursor-pointer flex items-center gap-2 ${
+                cleanInput === '102943'
+                  ? 'bg-emerald-50 border-emerald-600 text-emerald-800 font-bold'
+                  : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              <div className="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[14px]">person</span>
+              </div>
+              <div className="overflow-hidden">
+                <p className="text-xs font-bold truncate">Alice Smith</p>
+                <p className="text-[9px] text-slate-500 font-mono">#102943</p>
+              </div>
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 };
-

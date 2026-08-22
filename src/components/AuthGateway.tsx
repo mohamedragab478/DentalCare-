@@ -7,7 +7,7 @@ import { useAppThemeLanguage } from '../context/ThemeLanguageContext';
 interface AuthGatewayProps {
   patients?: Patient[];
   clinics?: ClinicRoom[];
-  onDoctorLoginSuccess: () => void;
+  onDoctorLoginSuccess: (doctorId?: string) => void;
   onPatientLoginSuccess: (patientId?: string) => void;
   onPatientSignUpSuccess?: (patient: Patient) => void;
 }

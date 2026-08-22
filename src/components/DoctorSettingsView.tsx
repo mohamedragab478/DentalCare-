@@ -346,6 +346,65 @@ export const DoctorSettingsView: React.FC<DoctorSettingsViewProps> = ({
             </button>
           </div>
         </div>
+
+        {/* 3. Supabase Cloud Database Sync Card */}
+        <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-[#e2e8f0] dark:border-slate-800 shadow-xs">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-4 mb-6">
+            <div>
+              <h2 className="font-headline font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                <span className="material-symbols-outlined text-[#006194] dark:text-[#00a3e0] text-[22px]">cloud_sync</span>
+                <span>{isRTL ? "مزامنة قاعدة بيانات Supabase السحابية" : "Supabase Cloud Database & Data Sync"}</span>
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                {isRTL 
+                  ? "رفع ومزامنة بيانات الـ 3 دكاترة والـ 3 مرضى وجميع السجلات الطبية مباشرة إلى السحابة." 
+                  : "Sync the 3 attending doctors, 3 primary patients, and all clinical records directly to your Supabase project."}
+              </p>
+            </div>
+
+            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-bold">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>vergecufkruhmpygvmwa.supabase.co</span>
+            </div>
+          </div>
+
+          <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700 mb-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                <span className="material-symbols-outlined text-blue-600 dark:text-blue-400 text-[18px]">medical_services</span>
+                <span>{isRTL ? "3 أطباء: د. أحمد السيد، د. محمد حسن، د. محمود إبراهيم" : "3 Doctors: Dr. Ahmed, Dr. Mohamed, Dr. Mahmoud"}</span>
+              </div>
+              <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-[18px]">personal_injury</span>
+                <span>{isRTL ? "3 مرضى: محمد علي، أليس سميث، إميلي ويليامز" : "3 Patients: Mohamed Ali, Alice Smith, Emily Williams"}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {isRTL 
+                ? "تم تجهيز كود SQL في ملف supabase-schema.sql مع أمر INSERT للـ 3 دكاترة والـ 3 مرضى." 
+                : "Full schema and seed SQL are prepared in supabase-schema.sql for one-click execution."}
+            </p>
+
+            <button
+              type="button"
+              onClick={async () => {
+                const res = await (await import('../services/supabaseService')).supabaseService.seedAllInitialData();
+                if (res.success) {
+                  alert(isRTL ? "تم بنجاح رفع ومزامنة بيانات الـ 3 دكاترة والـ 3 مرضى إلى قاعدة بيانات Supabase!" : res.message);
+                } else {
+                  alert(isRTL ? "تأكد من تشغيل ملف supabase-schema.sql في Supabase SQL Editor أولاً: " + res.message : res.message);
+                }
+              }}
+              className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-black dark:bg-blue-600 dark:hover:bg-blue-500 text-white text-xs font-bold shadow-sm transition-all cursor-pointer flex items-center gap-2"
+            >
+              <span className="material-symbols-outlined text-[18px]">publish</span>
+              <span>{isRTL ? "رفع البيانات الآن للسحابة" : "Sync Data to Supabase Now"}</span>
+            </button>
+          </div>
+        </div>
       </form>
     </div>
   );

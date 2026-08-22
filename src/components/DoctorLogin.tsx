@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
+import { DOCTORS_LIST } from '../data/initialData';
 
 interface DoctorLoginProps {
-  onLoginSuccess: () => void;
+  onLoginSuccess: (doctorId?: string) => void;
   onGoToPatientLogin: () => void;
 }
 
@@ -10,15 +11,51 @@ export const DoctorLogin: React.FC<DoctorLoginProps> = ({
   onGoToPatientLogin
 }) => {
   const [clinicalId, setClinicalId] = useState('DOC-101');
-  const [password, setPassword] = useState('••••••••••••');
+  const [password, setPassword] = useState('clinicPass2026');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
-
-  const bgImage = 'https://lh3.googleusercontent.com/aida-public/AB6AXuCC21kFRx_5ktBeCwtdIqlXj2Irk3hdlAatenkJ_OLad6viNnIr-9f8ZMQqNsZmzFbDi-NgBce-oLRALpVn2saWVWLskqkF87-0A68_132Anub0x00PVWxQonHuJmljF-Vw02kxweA5CLdy7Y7VgHGDCMQER8SJ5o7ErTc7J9U2Ggrwb1x9cu0tDtJEAIyUqK7QPVKrQ1z6tQC3qFVZU9hEP7X-eqc3SahcM13GiDkMGP0ICEVwTA1Nqg';
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onLoginSuccess();
+    setErrorMsg(null);
+
+    const cleanInput = clinicalId.trim().toLowerCase();
+    const digitsOnly = clinicalId.replace(/\D/g, '');
+    const trimmedPassword = password.trim();
+
+    const matchedDoctor = DOCTORS_LIST.find((d) => {
+      const docDigits = d.id.replace(/\D/g, '');
+      return (
+        d.id.toLowerCase() === cleanInput ||
+        d.email.toLowerCase() === cleanInput ||
+        d.name.toLowerCase().includes(cleanInput) ||
+        (digitsOnly.length > 0 && docDigits.endsWith(digitsOnly)) ||
+        cleanInput === `doc-${docDigits}` ||
+        cleanInput === `doc-10${docDigits}` ||
+        cleanInput === `10${docDigits}` ||
+        (cleanInput === 'doc-101' && d.id === 'doc-01') ||
+        (cleanInput === 'doc-102' && d.id === 'doc-02') ||
+        (cleanInput === 'doc-103' && d.id === 'doc-03') ||
+        (cleanInput.includes('ahmed') && d.id === 'doc-01') ||
+        (cleanInput.includes('mohamed') && d.id === 'doc-02') ||
+        (cleanInput.includes('mahmoud') && d.id === 'doc-03')
+      );
+    });
+
+    if (!matchedDoctor) {
+      setErrorMsg('Invalid Doctor ID or Clinical Code.');
+      return;
+    }
+
+    // Strict Password Validation
+    const validDoctorPasswords = ['clinicPass2026', 'admin123', 'doctor2026', '123456'];
+    if (!validDoctorPasswords.includes(trimmedPassword)) {
+      setErrorMsg('Incorrect password. Please enter the valid clinic password.');
+      return;
+    }
+
+    onLoginSuccess(matchedDoctor.id);
   };
 
   return (
@@ -31,6 +68,12 @@ export const DoctorLogin: React.FC<DoctorLoginProps> = ({
         <h1 className="font-headline font-bold text-2xl text-slate-900">Doctor Login</h1>
         <p className="text-xs text-slate-500 mt-1 font-medium">DentalCare Pro Clinical Workspace</p>
       </div>
+
+      {errorMsg && (
+        <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
+          {errorMsg}
+        </div>
+      )}
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -45,10 +88,13 @@ export const DoctorLogin: React.FC<DoctorLoginProps> = ({
             <input
               type="text"
               value={clinicalId}
-              onChange={(e) => setClinicalId(e.target.value)}
+              onChange={(e) => {
+                setClinicalId(e.target.value);
+                setErrorMsg(null);
+              }}
               required
               className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 bg-[#f8fafc] text-slate-900 text-sm focus:outline-none focus:border-[#006194] focus:ring-1 focus:ring-[#006194]"
-              placeholder="DOC-101"
+              placeholder="DOC-101 (Dr. Ahmed), DOC-102, DOC-103"
             />
           </div>
         </div>
@@ -64,7 +110,10 @@ export const DoctorLogin: React.FC<DoctorLoginProps> = ({
             <input
               type={showPassword ? 'text' : 'password'}
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setErrorMsg(null);
+              }}
               required
               className="w-full pl-11 pr-11 py-3 rounded-xl border border-slate-200 bg-[#f8fafc] text-slate-900 text-sm focus:outline-none focus:border-[#006194] focus:ring-1 focus:ring-[#006194]"
             />
@@ -90,16 +139,7 @@ export const DoctorLogin: React.FC<DoctorLoginProps> = ({
             />
             <span>Keep me logged in</span>
           </label>
-          <a
-            href="#forgot"
-            onClick={(e) => {
-              e.preventDefault();
-              alert("Password reset link sent to registered clinic email.");
-            }}
-            className="text-[#006194] hover:underline font-semibold"
-          >
-            Forgot password?
-          </a>
+          <span className="text-slate-400 text-[11px]">Secure SSL</span>
         </div>
 
         <button

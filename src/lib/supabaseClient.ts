@@ -1,7 +1,20 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Environment variables provided by Vite / Vercel
-const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || 'https://placeholder-project.supabase.co';
-const supabaseAnonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key';
+// Default Supabase project credentials provided
+export const SUPABASE_URL = 
+  (import.meta as any).env?.VITE_SUPABASE_URL || 'https://vergecufkruhmpygvmwa.supabase.co';
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const SUPABASE_ANON_KEY = 
+  (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || 'sb_publishable_7_DxLDjObG-yE8QsIlzq4Q_pqUZHSi5';
+
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10,
+    },
+  },
+});

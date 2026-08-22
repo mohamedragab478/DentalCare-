@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AppView, Patient, ToothStatus, ClinicRoom, VisitRecord, MedicalImage, DoctorProfile } from './types';
-import { INITIAL_PATIENTS, CLINIC_ROOMS, INITIAL_DOCTOR } from './data/initialData';
+import { INITIAL_PATIENTS, CLINIC_ROOMS, INITIAL_DOCTOR, DOCTORS_LIST } from './data/initialData';
 import { storage, subscribeToStorageUpdates } from './utils/storage';
+import { supabaseService } from './services/supabaseService';
 import { UnifiedHeader } from './components/UnifiedHeader';
 import { DoctorDashboard } from './components/DoctorDashboard';
 import { PatientTable } from './components/PatientTable';
@@ -38,41 +39,170 @@ export function App() {
   const [selectedPatientId, setSelectedPatientId] = useState<string>('849201'); // Mohamed Ali
   const [clinics, setClinics] = useState<ClinicRoom[]>(() => storage.getClinics());
 
-  // Real-time synchronization across browser tabs and persistence to localStorage
+  // Last synced serialized strings to prevent echo loops
+  const lastSyncedDoctorRef = useRef<string>(JSON.stringify(doctorProfile));
+  const lastSyncedPatientsRef = useRef<string>(JSON.stringify(patients));
+  const lastSyncedClinicsRef = useRef<string>(JSON.stringify(clinics));
+  const lastSyncedQueueRef = useRef<string>(JSON.stringify(completedQueueIds));
+
+  // Real-time persistence to localStorage & Supabase
   useEffect(() => {
-    storage.setDoctorProfile(doctorProfile);
+    const serialized = JSON.stringify(doctorProfile);
+    if (lastSyncedDoctorRef.current !== serialized) {
+      lastSyncedDoctorRef.current = serialized;
+      storage.setDoctorProfile(doctorProfile);
+      supabaseService.syncDoctorProfileToCloud(doctorProfile);
+    }
   }, [doctorProfile]);
 
   useEffect(() => {
-    storage.setPatients(patients);
+    const serialized = JSON.stringify(patients);
+    if (lastSyncedPatientsRef.current !== serialized) {
+      lastSyncedPatientsRef.current = serialized;
+      storage.setPatients(patients);
+      supabaseService.syncPatientsToCloud(patients);
+    }
   }, [patients]);
 
   useEffect(() => {
-    storage.setClinics(clinics);
+    const serialized = JSON.stringify(clinics);
+    if (lastSyncedClinicsRef.current !== serialized) {
+      lastSyncedClinicsRef.current = serialized;
+      storage.setClinics(clinics);
+      supabaseService.syncClinicsToCloud(clinics);
+    }
   }, [clinics]);
 
   useEffect(() => {
-    storage.setCompletedQueue(completedQueueIds);
+    const serialized = JSON.stringify(completedQueueIds);
+    if (lastSyncedQueueRef.current !== serialized) {
+      lastSyncedQueueRef.current = serialized;
+      storage.setCompletedQueue(completedQueueIds);
+      supabaseService.syncCompletedQueueToCloud(completedQueueIds);
+    }
   }, [completedQueueIds]);
 
+  // Initial cloud fetch & realtime cloud subscription on mount
   useEffect(() => {
-    const unsubscribe = subscribeToStorageUpdates((type, payload) => {
-      if (type === 'DOCTOR_UPDATED' && payload) {
-        setDoctorProfile(payload);
-      } else if (type === 'CLINICS_UPDATED' && payload) {
-        setClinics(payload);
-      } else if (type === 'PATIENTS_UPDATED' && payload) {
-        setPatients(payload);
-      } else if (type === 'QUEUE_UPDATED' && payload) {
-        setCompletedQueueIds(payload);
-      } else if (type === 'FULL_SYNC' && payload) {
-        if (payload.doctor) setDoctorProfile(payload.doctor);
-        if (payload.clinics) setClinics(payload.clinics);
-        if (payload.patients) setPatients(payload.patients);
+    // 1. Initial cloud fetch
+    async function loadCloudData() {
+      try {
+        const cloudPatients = await supabaseService.fetchPatients();
+        if (cloudPatients && cloudPatients.length > 0) {
+          lastSyncedPatientsRef.current = JSON.stringify(cloudPatients);
+          setPatients(cloudPatients);
+        } else {
+          // Push initial data to cloud so Supabase gets populated
+          const currentLocalPatients = storage.getPatients();
+          supabaseService.syncPatientsToCloud(currentLocalPatients);
+        }
+
+        const cloudClinics = await supabaseService.fetchClinics();
+        if (cloudClinics && cloudClinics.length > 0) {
+          lastSyncedClinicsRef.current = JSON.stringify(cloudClinics);
+          setClinics(cloudClinics);
+        } else {
+          supabaseService.syncClinicsToCloud(storage.getClinics());
+        }
+
+        const cloudDoctor = await supabaseService.fetchDoctorProfile();
+        if (cloudDoctor) {
+          lastSyncedDoctorRef.current = JSON.stringify(cloudDoctor);
+          setDoctorProfile(cloudDoctor);
+        } else {
+          supabaseService.syncDoctorProfileToCloud(storage.getDoctorProfile());
+        }
+
+        const cloudQueue = await supabaseService.fetchCompletedQueue();
+        if (cloudQueue) {
+          lastSyncedQueueRef.current = JSON.stringify(cloudQueue);
+          setCompletedQueueIds(cloudQueue);
+        }
+      } catch (err) {
+        console.warn('Initial cloud load skipped / using local data', err);
+      }
+    }
+
+    loadCloudData();
+
+    // 2. Realtime cloud table subscriptions
+    const unsubscribeCloud = supabaseService.subscribeToCloudChanges({
+      onPatientsChange: (newPatients) => {
+        const serialized = JSON.stringify(newPatients);
+        if (lastSyncedPatientsRef.current !== serialized) {
+          lastSyncedPatientsRef.current = serialized;
+          setPatients(newPatients);
+        }
+      },
+      onClinicsChange: (newClinics) => {
+        const serialized = JSON.stringify(newClinics);
+        if (lastSyncedClinicsRef.current !== serialized) {
+          lastSyncedClinicsRef.current = serialized;
+          setClinics(newClinics);
+        }
+      },
+      onDoctorChange: (newDoctor) => {
+        const serialized = JSON.stringify(newDoctor);
+        if (lastSyncedDoctorRef.current !== serialized) {
+          lastSyncedDoctorRef.current = serialized;
+          setDoctorProfile(newDoctor);
+        }
+      },
+      onQueueChange: (newQueue) => {
+        const serialized = JSON.stringify(newQueue);
+        if (lastSyncedQueueRef.current !== serialized) {
+          lastSyncedQueueRef.current = serialized;
+          setCompletedQueueIds(newQueue);
+        }
       }
     });
 
-    return () => unsubscribe();
+    // 3. Local tab synchronization
+    const unsubscribeLocal = subscribeToStorageUpdates((type, payload) => {
+      if (type === 'DOCTOR_UPDATED' && payload) {
+        const serialized = JSON.stringify(payload);
+        if (lastSyncedDoctorRef.current !== serialized) {
+          lastSyncedDoctorRef.current = serialized;
+          setDoctorProfile(payload);
+        }
+      } else if (type === 'CLINICS_UPDATED' && payload) {
+        const serialized = JSON.stringify(payload);
+        if (lastSyncedClinicsRef.current !== serialized) {
+          lastSyncedClinicsRef.current = serialized;
+          setClinics(payload);
+        }
+      } else if (type === 'PATIENTS_UPDATED' && payload) {
+        const serialized = JSON.stringify(payload);
+        if (lastSyncedPatientsRef.current !== serialized) {
+          lastSyncedPatientsRef.current = serialized;
+          setPatients(payload);
+        }
+      } else if (type === 'QUEUE_UPDATED' && payload) {
+        const serialized = JSON.stringify(payload);
+        if (lastSyncedQueueRef.current !== serialized) {
+          lastSyncedQueueRef.current = serialized;
+          setCompletedQueueIds(payload);
+        }
+      } else if (type === 'FULL_SYNC' && payload) {
+        if (payload.doctor) {
+          lastSyncedDoctorRef.current = JSON.stringify(payload.doctor);
+          setDoctorProfile(payload.doctor);
+        }
+        if (payload.clinics) {
+          lastSyncedClinicsRef.current = JSON.stringify(payload.clinics);
+          setClinics(payload.clinics);
+        }
+        if (payload.patients) {
+          lastSyncedPatientsRef.current = JSON.stringify(payload.patients);
+          setPatients(payload.patients);
+        }
+      }
+    });
+
+    return () => {
+      unsubscribeCloud();
+      unsubscribeLocal();
+    };
   }, []);
 
   // Modals & Edit State
@@ -87,7 +217,31 @@ export function App() {
   const activePatient = patients.find((p) => p.id === selectedPatientId) || patients[0];
 
   // ================= Handlers =================
-  const handleDoctorLogin = () => {
+  const handleDoctorLogin = (doctorId?: string) => {
+    if (doctorId) {
+      const cleanTarget = doctorId.toLowerCase().trim();
+      const digits = cleanTarget.replace(/\D/g, '');
+      const matchedDoctor = DOCTORS_LIST.find((d) => {
+        const docDigits = d.id.replace(/\D/g, '');
+        return (
+          d.id.toLowerCase() === cleanTarget ||
+          d.email.toLowerCase() === cleanTarget ||
+          d.name.toLowerCase().includes(cleanTarget) ||
+          (digits.length > 0 && docDigits.endsWith(digits)) ||
+          cleanTarget === `doc-${docDigits}` ||
+          cleanTarget === `doc-10${docDigits}` ||
+          cleanTarget === `10${docDigits}` ||
+          (cleanTarget === 'doc-101' && d.id === 'doc-01') ||
+          (cleanTarget === 'doc-102' && d.id === 'doc-02') ||
+          (cleanTarget === 'doc-103' && d.id === 'doc-03')
+        );
+      });
+
+      if (matchedDoctor) {
+        setDoctorProfile(matchedDoctor);
+        storage.setDoctorProfile(matchedDoctor);
+      }
+    }
     setIsAuthenticated(true);
     setUserRole('doctor');
     setCurrentView('doctor-dashboard');
