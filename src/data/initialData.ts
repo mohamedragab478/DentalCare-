@@ -100,6 +100,8 @@ export const INITIAL_PATIENTS: Patient[] = [
     attendingDoctor: 'Dr. Ahmed',
     attendingClinic: 'Clinic 1',
     treatmentType: 'Filling',
+    inClinic: true,
+    inClinicTime: '10:15 AM',
     medicalNotes: 'Mild dental anxiety. Patient responded well to gentle local numbing. Composite filling applied to tooth 26.',
     teeth: { ...DEFAULT_TEETH_MAP },
     visits: [

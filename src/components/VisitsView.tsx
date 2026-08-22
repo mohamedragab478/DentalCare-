@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Patient } from '../types';
+import { getAppointmentCountdown } from '../utils/dateUtils';
+import { useAppThemeLanguage } from '../context/ThemeLanguageContext';
 
 interface VisitsViewProps {
   patients: Patient[];
@@ -14,6 +16,8 @@ export const VisitsView: React.FC<VisitsViewProps> = ({
   onNewConsultation,
   onDeleteVisit
 }) => {
+  const { t, isRTL } = useAppThemeLanguage();
+
   const [filterStatus, setFilterStatus] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [visitToDelete, setVisitToDelete] = useState<{ patientId: string; visitId: string; patientName: string; procedure: string } | null>(null);
@@ -43,144 +47,183 @@ export const VisitsView: React.FC<VisitsViewProps> = ({
   });
 
   return (
-    <div className="max-w-7xl mx-auto w-full space-y-6 animate-in fade-in duration-200">
+    <div className="max-w-7xl mx-auto w-full space-y-6 animate-in fade-in duration-200 transition-colors">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="font-headline font-bold text-3xl text-slate-900 flex items-center gap-2.5">
-            <span className="material-symbols-outlined text-[#006194] text-3xl">calendar_month</span>
-            <span>Visits & Clinical History</span>
+          <h1 className="font-headline font-bold text-2xl sm:text-3xl text-slate-900 dark:text-white flex items-center gap-2.5">
+            <span className="material-symbols-outlined text-[#006194] dark:text-[#00a3e0] text-3xl">calendar_month</span>
+            <span>{t('visits_and_schedule')}</span>
           </h1>
-          <p className="text-slate-500 text-sm mt-1">
-            Browse full patient consultations history, inspect details, and manage records
+          <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mt-1">
+            {isRTL ? "مراجعة كشوفات واستشارات المرضى السابقة والمواعيد القادمة" : "Browse full patient consultations history, inspect details, and manage records"}
           </p>
         </div>
 
         <button
           onClick={onNewConsultation}
-          className="bg-[#006194] text-white px-4 py-2.5 rounded-xl text-xs font-bold hover:bg-[#004b73] transition-colors flex items-center gap-2 shadow-xs cursor-pointer"
+          className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-xs cursor-pointer active:scale-95"
         >
-          <span className="material-symbols-outlined text-[18px]">add</span>
-          <span>Schedule New Visit</span>
+          <span className="material-symbols-outlined text-[18px]">calendar_add_on</span>
+          <span>{t('schedule_next_visit')}</span>
         </button>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white rounded-2xl border border-[#e2e8f0] p-4 shadow-2xs flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-[#e2e8f0] dark:border-slate-800 p-4 shadow-2xs flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
         <div className="relative flex-1">
-          <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">
+          <span className={`material-symbols-outlined absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 text-slate-400 text-[20px]`}>
             search
           </span>
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by patient name, ID, procedure, date..."
-            className="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-[#006194] focus:bg-white transition-all"
+            placeholder={t('search_placeholder')}
+            className={`w-full ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[#006194] focus:bg-white dark:focus:bg-slate-800 transition-all`}
           />
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <span className="text-xs font-semibold text-slate-500 mr-1 hidden sm:inline">Status:</span>
-          {['All', 'Completed', 'Scheduled'].map((tab) => (
+          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 mr-1 hidden sm:inline">{t('status')}:</span>
+          {[
+            { key: 'All', label: isRTL ? 'الكل' : 'All' },
+            { key: 'Completed', label: isRTL ? 'المكتملة' : 'Completed' },
+            { key: 'Scheduled', label: isRTL ? 'المجدولة' : 'Scheduled' }
+          ].map((tab) => (
             <button
-              key={tab}
-              onClick={() => setFilterStatus(tab)}
+              key={tab.key}
+              onClick={() => setFilterStatus(tab.key)}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                filterStatus === tab
-                  ? 'bg-[#006194] text-white shadow-xs'
-                  : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
+                filterStatus === tab.key
+                  ? 'bg-[#006194] dark:bg-[#00a3e0] text-white shadow-xs'
+                  : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
               }`}
             >
-              {tab}
+              {tab.label}
             </button>
           ))}
         </div>
       </div>
 
       {/* Visits List */}
-      <div className="bg-white rounded-2xl border border-[#e2e8f0] overflow-hidden shadow-xs">
-        <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-          <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
-            <span className="material-symbols-outlined text-[16px] text-[#006194]">history</span>
-            <span>Recorded Consultations ({filteredVisits.length})</span>
-          </span>
-        </div>
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-[#e2e8f0] dark:border-slate-800 overflow-hidden shadow-xs">
+        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+          {filteredVisits.map((visit) => {
+            const countdown = getAppointmentCountdown(visit.date);
 
-        <div className="divide-y divide-slate-100">
-          {filteredVisits.map((visit) => (
-            <div
-              key={visit.id}
-              className="p-5 hover:bg-slate-50/80 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4"
-            >
-              <div className="flex items-start gap-4">
-                <div className="w-11 h-11 rounded-2xl bg-[#dae2fd] text-[#006194] font-bold text-xs flex items-center justify-center shrink-0 mt-0.5 shadow-2xs border border-blue-100">
-                  {visit.patient.initials}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <span className="font-bold text-sm text-slate-900">{visit.patient.name}</span>
-                    <span className="text-xs text-slate-400 font-mono">({visit.patient.id})</span>
-                    <span className="text-xs font-bold text-[#006194] bg-blue-50 border border-blue-100 px-2.5 py-0.5 rounded-lg">
-                      {visit.date}
+            return (
+              <div
+                key={visit.id}
+                className="p-5 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950 border border-blue-100 dark:border-blue-900 text-[#006194] dark:text-[#00a3e0] flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-2xl">
+                      {visit.status === 'completed' ? 'check_circle' : 'calendar_clock'}
                     </span>
-                    {visit.clinicRoom && (
-                      <span className="text-xs font-semibold text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">
-                        {visit.clinicRoom}
-                      </span>
-                    )}
                   </div>
-                  <p className="text-sm font-semibold text-slate-800">{visit.procedure}</p>
-                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">{visit.notes || 'Routine consultation and dental evaluation.'}</p>
-                  <div className="flex items-center gap-4 text-[11px] text-slate-400 mt-1.5">
-                    <span>Doctor: {visit.doctorName || 'Dr. Ahmed'}</span>
-                    {visit.cost && <span className="font-semibold text-slate-600">Fee: ${visit.cost}</span>}
+
+                  <div>
+                    <div className="flex items-center gap-2.5 flex-wrap mb-1">
+                      <button
+                        onClick={() => onSelectPatient(visit.patient)}
+                        className="font-bold text-sm text-slate-900 dark:text-white hover:text-[#006194] dark:hover:text-[#00a3e0] transition-colors cursor-pointer"
+                      >
+                        {visit.patient.name}
+                      </button>
+                      <span className="text-xs font-mono text-slate-400">#{visit.patient.id}</span>
+                      
+                      <span className="text-xs font-bold text-[#006194] dark:text-[#00a3e0] bg-blue-50 dark:bg-blue-950 px-2.5 py-0.5 rounded-md border border-blue-100 dark:border-blue-900 font-mono">
+                        {visit.date}
+                      </span>
+
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                          visit.status === 'completed'
+                            ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                            : 'bg-blue-50 dark:bg-blue-950 text-[#006194] dark:text-blue-300 border-blue-200 dark:border-blue-800'
+                        }`}
+                      >
+                        {visit.status === 'completed' ? (isRTL ? 'تمت بنجاح' : 'Completed') : (isRTL ? 'مجدولة' : 'Scheduled')}
+                      </span>
+
+                      {/* Relative countdown pill for scheduled appointments */}
+                      {visit.status === 'scheduled' && countdown.status !== 'none' && (
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                          countdown.isToday 
+                            ? 'bg-emerald-500 text-white border-emerald-400'
+                            : countdown.isPast
+                            ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300'
+                            : 'bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 border-blue-300'
+                        }`}>
+                          {isRTL ? countdown.badgeArabic : countdown.badgeEnglish}
+                        </span>
+                      )}
+                    </div>
+
+                    <h4 className="font-semibold text-xs text-slate-800 dark:text-slate-200 mb-1">{visit.procedure}</h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-2">
+                      {visit.notes || (isRTL ? 'كشف دوري ومتابعة سريرية.' : 'Routine consultation and dental evaluation.')}
+                    </p>
+
+                    <div className="flex flex-wrap items-center gap-4 text-[11px] text-slate-400">
+                      <span className="flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[14px]">person</span>
+                        {t('doctor')}: {visit.doctorName || (isRTL ? 'د. أحمد السيد' : 'Dr. Ahmed')}
+                      </span>
+                      {visit.clinicRoom && (
+                        <span className="flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[14px]">meeting_room</span>
+                          {visit.clinicRoom}
+                        </span>
+                      )}
+                      {visit.cost && (
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">
+                          {isRTL ? 'التكلفة:' : 'Fee:'} ${visit.cost}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex items-center gap-2.5 shrink-0 self-end md:self-center">
-                <span
-                  className={`text-xs font-bold px-3 py-1 rounded-full border ${
-                    visit.status === 'completed'
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                      : 'bg-blue-50 text-[#006194] border-blue-200'
-                  }`}
-                >
-                  {visit.status === 'completed' ? 'Completed' : 'Scheduled'}
-                </span>
-
-                <button
-                  onClick={() => onSelectPatient(visit.patient)}
-                  className="px-3 py-1.5 border border-[#006194] text-[#006194] hover:bg-blue-50 rounded-xl text-xs font-semibold cursor-pointer transition-colors"
-                >
-                  View Chart
-                </button>
-
-                {onDeleteVisit && (
+                <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
                   <button
-                    onClick={() =>
-                      setVisitToDelete({
-                        patientId: visit.patient.id,
-                        visitId: visit.id,
-                        patientName: visit.patient.name,
-                        procedure: visit.procedure
-                      })
-                    }
-                    title="Delete this visit / مسح الزيارة"
-                    className="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200 transition-colors cursor-pointer"
+                    onClick={() => onSelectPatient(visit.patient)}
+                    className="px-3.5 py-1.5 border border-[#006194] dark:border-blue-500 text-[#006194] dark:text-[#00a3e0] hover:bg-blue-50 dark:hover:bg-slate-800 rounded-xl text-xs font-semibold cursor-pointer transition-colors"
                   >
-                    <span className="material-symbols-outlined text-[18px]">delete</span>
+                    {t('open_chart')}
                   </button>
-                )}
+
+                  {onDeleteVisit && (
+                    <button
+                      onClick={() =>
+                        setVisitToDelete({
+                          patientId: visit.patient.id,
+                          visitId: visit.id,
+                          patientName: visit.patient.name,
+                          procedure: visit.procedure
+                        })
+                      }
+                      title={isRTL ? "مسح الزيارة" : "Delete visit"}
+                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-xl border border-transparent hover:border-red-200 dark:hover:border-red-800 transition-colors cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">delete</span>
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {filteredVisits.length === 0 && (
             <div className="text-center py-16 px-4">
-              <span className="material-symbols-outlined text-4xl text-slate-300 mb-2">event_busy</span>
-              <p className="font-headline font-bold text-slate-700 text-sm">No visits found</p>
-              <p className="text-xs text-slate-400 mt-1">Try adjusting your filters or search terms.</p>
+              <span className="material-symbols-outlined text-4xl text-slate-300 dark:text-slate-600 mb-2">event_busy</span>
+              <p className="font-headline font-bold text-base text-slate-700 dark:text-slate-300">
+                {isRTL ? "لا توجد زيارات مسجلة" : "No visits found"}
+              </p>
+              <p className="text-xs text-slate-400 mt-1">
+                {isRTL ? "جرّب تغيير كلمة البحث أو فلتر الحالة." : "Try adjusting your search query or status filter."}
+              </p>
             </div>
           )}
         </div>
@@ -188,25 +231,27 @@ export const VisitsView: React.FC<VisitsViewProps> = ({
 
       {/* Delete Confirmation Modal */}
       {visitToDelete && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95">
-            <div className="w-12 h-12 rounded-full bg-red-50 text-red-600 flex items-center justify-center mb-4 mx-auto border border-red-100">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in-95">
+            <div className="w-12 h-12 rounded-2xl bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400 flex items-center justify-center mb-4 mx-auto border border-red-100 dark:border-red-800">
               <span className="material-symbols-outlined text-2xl">delete_forever</span>
             </div>
-            <h3 className="font-headline font-bold text-lg text-slate-900 text-center mb-1">
-              Delete Visit Record?
+            <h3 className="font-headline font-bold text-lg text-slate-900 dark:text-white text-center mb-1">
+              {t('delete_visit_title')}
             </h3>
-            <p className="text-xs text-slate-500 text-center mb-4 leading-relaxed">
-              Are you sure you want to permanently delete the visit for <span className="font-bold text-slate-800">{visitToDelete.patientName}</span> ({visitToDelete.procedure})?
+            <p className="text-xs text-slate-500 dark:text-slate-400 text-center mb-4 leading-relaxed">
+              {isRTL 
+                ? `هل أنت متأكد من رغبتك في حذف زيارة المريض ${visitToDelete.patientName} (${visitToDelete.procedure})؟`
+                : `Are you sure you want to permanently delete the visit for ${visitToDelete.patientName} (${visitToDelete.procedure})?`}
             </p>
 
             <div className="flex gap-3">
               <button
                 type="button"
                 onClick={() => setVisitToDelete(null)}
-                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-semibold text-xs hover:bg-slate-50 transition-colors cursor-pointer"
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
-                Cancel (إلغاء)
+                {t('cancel')}
               </button>
               <button
                 type="button"
@@ -219,7 +264,7 @@ export const VisitsView: React.FC<VisitsViewProps> = ({
                 className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-1"
               >
                 <span className="material-symbols-outlined text-[16px]">delete</span>
-                <span>Yes, Delete (مسح)</span>
+                <span>{t('delete')}</span>
               </button>
             </div>
           </div>

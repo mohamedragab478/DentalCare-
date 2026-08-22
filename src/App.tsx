@@ -16,15 +16,18 @@ import { DoctorSettingsView } from './components/DoctorSettingsView';
 import { NewConsultationModal } from './components/NewConsultationModal';
 import { AddPatientModal } from './components/AddPatientModal';
 import { UploadImageModal } from './components/UploadImageModal';
+import { ScheduleVisitModal } from './components/ScheduleVisitModal';
+import { useAppThemeLanguage } from './context/ThemeLanguageContext';
 
 export function App() {
+  const { isRTL } = useAppThemeLanguage();
+
   // Authentication & Role State
-  // Default is unauthenticated so user starts at the external Auth Gateway / Login Carousel
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [userRole, setUserRole] = useState<'doctor' | 'patient'>('doctor');
   const [currentView, setCurrentView] = useState<AppView>('auth-gateway');
 
-  // Attending Doctor Profile State (User explicit requirement: profile photo upload + settings)
+  // Attending Doctor Profile State
   const [doctorProfile, setDoctorProfile] = useState<DoctorProfile>({
     id: 'doc-01',
     name: 'Dr. Ahmed Al-Sayed',
@@ -37,12 +40,12 @@ export function App() {
     bio: 'Specializing in complex restorative prosthodontics, digital smile design, and guided implant surgery with over 12 years of clinical excellence.'
   });
 
-  // Today's Queue Completed Status Tracking (User explicit requirement: خلصت البيشنت دا)
-  const [completedQueueIds, setCompletedQueueIds] = useState<string[]>(['849202']);
+  // Today's Queue Completed Status Tracking (خلصت البيشنت دا)
+  const [completedQueueIds, setCompletedQueueIds] = useState<string[]>([]);
 
-  // Core Clinical State
+  // Application Data State
   const [patients, setPatients] = useState<Patient[]>(INITIAL_PATIENTS);
-  const [selectedPatientId, setSelectedPatientId] = useState<string>('849201'); // Mohamed Ali (Numeric ID)
+  const [selectedPatientId, setSelectedPatientId] = useState<string>('849201'); // Mohamed Ali
   const [clinics, setClinics] = useState<ClinicRoom[]>(CLINIC_ROOMS);
 
   // Modals & Edit State
@@ -50,6 +53,8 @@ export function App() {
   const [isAddPatientOpen, setIsAddPatientOpen] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [isUploadImageOpen, setIsUploadImageOpen] = useState(false);
+  const [isScheduleVisitOpen, setIsScheduleVisitOpen] = useState(false);
+  const [scheduleTargetPatient, setScheduleTargetPatient] = useState<Patient | null>(null);
 
   // Current active patient
   const activePatient = patients.find((p) => p.id === selectedPatientId) || patients[0];
@@ -73,6 +78,7 @@ export function App() {
     setCurrentView('patient-dashboard');
   };
 
+  // When a new patient signs up from AuthGateway, append to the END of list
   const handlePatientSignUp = (newPatient: Patient) => {
     setPatients((prev) => [...prev, newPatient]);
     setSelectedPatientId(newPatient.id);
@@ -87,16 +93,46 @@ export function App() {
     );
   };
 
+  const handleToggleInClinic = (patientId: string) => {
+    setPatients((prev) => {
+      const target = prev.find((p) => p.id === patientId);
+      if (!target) return prev;
+
+      const isNowInClinic = !target.inClinic;
+      const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      const updatedPatient: Patient = {
+        ...target,
+        inClinic: isNowInClinic,
+        inClinicTime: isNowInClinic ? nowTime : undefined
+      };
+
+      if (isNowInClinic) {
+        // Move to the top of the queue right after any patients already in clinic
+        const others = prev.filter((p) => p.id !== patientId);
+        const alreadyInClinic = others.filter((p) => p.inClinic);
+        const notInClinic = others.filter((p) => !p.inClinic);
+        return [...alreadyInClinic, updatedPatient, ...notInClinic];
+      } else {
+        // If untoggled, preserve others and put this patient with the non-in-clinic group
+        const others = prev.filter((p) => p.id !== patientId);
+        const alreadyInClinic = others.filter((p) => p.inClinic);
+        const notInClinic = others.filter((p) => !p.inClinic);
+        return [...alreadyInClinic, ...notInClinic, updatedPatient];
+      }
+    });
+  };
+
   const handleReorderPatients = (newOrder: Patient[]) => {
     setPatients(newOrder);
   };
 
   const handleLogout = () => {
     setIsAuthenticated(false);
-    setEditingPatient(null);
     setCurrentView('auth-gateway');
   };
 
+  // FDI Tooth Update
   const handleUpdateTooth = (
     toothId: number,
     status: ToothStatus,
@@ -113,16 +149,23 @@ export function App() {
             [toothId]: {
               id: toothId,
               status,
-              notes: notes !== undefined ? notes : p.teeth[toothId]?.notes,
-              lastTreatmentDate: date !== undefined ? date : p.teeth[toothId]?.lastTreatmentDate,
-              customProcedureName: customProcedureName !== undefined ? customProcedureName : p.teeth[toothId]?.customProcedureName,
+              notes: notes || p.teeth[toothId]?.notes || '',
+              history: [
+                {
+                  date: date || new Date().toISOString().split('T')[0],
+                  procedure: customProcedureName || `${status.toUpperCase()} treatment recorded`,
+                  doctor: doctorProfile.name,
+                  notes: notes || ''
+                },
+                ...(p.teeth[toothId]?.history || [])
+              ],
               bridgeSpan: bridgeSpan !== undefined ? bridgeSpan : p.teeth[toothId]?.bridgeSpan
             }
           };
+
           return {
             ...p,
-            teeth: updatedTeeth,
-            lastVisit: date || p.lastVisit
+            teeth: updatedTeeth
           };
         }
         return p;
@@ -130,6 +173,7 @@ export function App() {
     );
   };
 
+  // FDI Multi-Tooth / Batch Update
   const handleBatchUpdateTeeth = (
     updates: Array<{
       toothId: number;
@@ -143,23 +187,30 @@ export function App() {
     setPatients((prev) =>
       prev.map((p) => {
         if (p.id === activePatient.id) {
-          const updatedTeeth = { ...p.teeth };
-          let latestDate = p.lastVisit;
-          for (const u of updates) {
-            updatedTeeth[u.toothId] = {
-              id: u.toothId,
-              status: u.status,
-              notes: u.notes !== undefined ? u.notes : p.teeth[u.toothId]?.notes,
-              lastTreatmentDate: u.date !== undefined ? u.date : p.teeth[u.toothId]?.lastTreatmentDate,
-              customProcedureName: u.customProcedureName !== undefined ? u.customProcedureName : p.teeth[u.toothId]?.customProcedureName,
-              bridgeSpan: u.bridgeSpan !== undefined ? u.bridgeSpan : p.teeth[u.toothId]?.bridgeSpan
+          const newTeeth = { ...p.teeth };
+          const currentDate = new Date().toISOString().split('T')[0];
+
+          updates.forEach((item) => {
+            newTeeth[item.toothId] = {
+              id: item.toothId,
+              status: item.status,
+              notes: item.notes || newTeeth[item.toothId]?.notes || '',
+              history: [
+                {
+                  date: item.date || currentDate,
+                  procedure: item.customProcedureName || `${item.status.toUpperCase()} treatment recorded`,
+                  doctor: doctorProfile.name,
+                  notes: item.notes || ''
+                },
+                ...(newTeeth[item.toothId]?.history || [])
+              ],
+              bridgeSpan: item.bridgeSpan !== undefined ? item.bridgeSpan : newTeeth[item.toothId]?.bridgeSpan
             };
-            if (u.date) latestDate = u.date;
-          }
+          });
+
           return {
             ...p,
-            teeth: updatedTeeth,
-            lastVisit: latestDate
+            teeth: newTeeth
           };
         }
         return p;
@@ -167,36 +218,91 @@ export function App() {
     );
   };
 
+  // Add Consultation Record
   const handleAddConsultation = (
     patientId: string,
-    visit: VisitRecord,
-    isScheduledFuture?: boolean,
-    scheduledTime?: string
+    procedure: string,
+    doctorName: string,
+    clinicRoom: string,
+    notes: string,
+    cost?: number,
+    nextVisitDate?: string
   ) => {
+    const today = new Date().toISOString().split('T')[0];
+    const newVisit: VisitRecord = {
+      id: `v-${Date.now()}`,
+      date: today,
+      procedure,
+      doctorName: doctorName || doctorProfile.name,
+      clinicRoom: clinicRoom || doctorProfile.assignedClinic,
+      notes,
+      cost,
+      status: 'completed'
+    };
+
     setPatients((prev) =>
       prev.map((p) => {
         if (p.id === patientId) {
-          if (isScheduledFuture) {
-            return {
-              ...p,
-              nextVisit: visit.date,
-              nextVisitTime: scheduledTime || '10:30 AM',
-              attendingClinic: visit.clinicRoom,
-              visits: [visit, ...p.visits]
-            };
-          } else {
-            return {
-              ...p,
-              lastVisit: visit.date,
-              visits: [visit, ...p.visits]
-            };
-          }
+          return {
+            ...p,
+            visits: [newVisit, ...p.visits],
+            lastVisit: today,
+            nextVisit: nextVisitDate || p.nextVisit,
+            treatmentType: procedure || p.treatmentType
+          };
         }
         return p;
       })
     );
+    setIsConsultationOpen(false);
   };
 
+  // Schedule Next Visit (with Day 28 preset)
+  const handleOpenScheduleVisit = (patient?: Patient) => {
+    setScheduleTargetPatient(patient || activePatient);
+    setIsScheduleVisitOpen(true);
+  };
+
+  const handleConfirmScheduleVisit = (
+    patientId: string,
+    date: string,
+    time: string,
+    clinic: string,
+    procedure: string,
+    notes: string
+  ) => {
+    const newVisit: VisitRecord = {
+      id: `v-${Date.now()}`,
+      date: date,
+      procedure: procedure || 'Scheduled Dental Checkup',
+      doctorName: doctorProfile.name,
+      clinicRoom: clinic,
+      notes: notes || 'Upcoming scheduled appointment',
+      status: 'scheduled'
+    };
+
+    setPatients((prev) =>
+      prev.map((p) => {
+        if (p.id === patientId) {
+          return {
+            ...p,
+            nextVisit: date,
+            nextVisitTime: time,
+            attendingClinic: clinic,
+            attendingDoctor: doctorProfile.name,
+            treatmentType: procedure || p.treatmentType,
+            visits: [newVisit, ...p.visits]
+          };
+        }
+        return p;
+      })
+    );
+
+    setIsScheduleVisitOpen(false);
+    setScheduleTargetPatient(null);
+  };
+
+  // Delete Visit
   const handleDeleteVisit = (patientId: string, visitId: string) => {
     setPatients((prev) =>
       prev.map((p) => {
@@ -218,14 +324,15 @@ export function App() {
     );
   };
 
-  // Add or Edit Patient with pre-filled state retention
+  // Add or Edit Patient (New patients are appended to the END of the list)
   const handleSavePatient = (savedPatient: Patient) => {
     setPatients((prev) => {
       const exists = prev.some((p) => p.id === savedPatient.id);
       if (exists) {
         return prev.map((p) => (p.id === savedPatient.id ? savedPatient : p));
       }
-      return [savedPatient, ...prev];
+      // Put new patient at the end of the list
+      return [...prev, savedPatient];
     });
     setSelectedPatientId(savedPatient.id);
     setEditingPatient(null);
@@ -259,7 +366,6 @@ export function App() {
   const handleAssignDoctor = (roomId: number) => {
     setClinics((prev) =>
       prev.map((room) => {
-        // If room is the chosen target room
         if (room.id === roomId) {
           return {
             ...room,
@@ -269,7 +375,6 @@ export function App() {
             doctorSpecialty: INITIAL_DOCTOR.specialty
           };
         }
-        // If this was another room previously occupied by Dr. Ahmed, vacate it!
         if (room.doctorName === INITIAL_DOCTOR.name) {
           return {
             ...room,
@@ -280,7 +385,6 @@ export function App() {
             currentPatient: undefined
           };
         }
-        // Leave other doctors' rooms untouched
         return room;
       })
     );
@@ -313,19 +417,14 @@ export function App() {
     currentView === 'patient-signup';
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-[#181c20] font-sans flex flex-col selection:bg-[#cce5ff]">
+    <div className="min-h-screen bg-[#f8fafc] dark:bg-slate-950 text-[#181c20] dark:text-slate-100 font-sans flex flex-col selection:bg-[#cce5ff] transition-colors">
       {/* ========================================================================= */}
-      {/* 1. OUTSIDE / AUTH GATEWAY (صفحة تسجيل الدخول والخروج مع الكاروسيل الدوار)  */}
+      {/* 1. OUTSIDE / AUTH GATEWAY                                                 */}
       {/* ========================================================================= */}
       {isAuthView && (
         <AuthGateway
-          initialTab={
-            currentView === 'patient-login'
-              ? 'patient-login'
-              : currentView === 'patient-signup'
-              ? 'patient-signup'
-              : 'doctor-login'
-          }
+          patients={patients}
+          clinics={clinics}
           onDoctorLoginSuccess={handleDoctorLogin}
           onPatientLoginSuccess={handlePatientLogin}
           onPatientSignUpSuccess={handlePatientSignUp}
@@ -333,7 +432,7 @@ export function App() {
       )}
 
       {/* ========================================================================= */}
-      {/* 2. INSIDE PORTAL (فصل كامل وحصري بين بوابة الطبيب وبوابة المريض)            */}
+      {/* 2. INSIDE PORTAL                                                          */}
       {/* ========================================================================= */}
       {!isAuthView && (
         <>
@@ -354,17 +453,19 @@ export function App() {
                 currentView={currentView}
                 onNavigate={(view) => setCurrentView(view)}
                 onNewConsultation={() => setIsConsultationOpen(true)}
+                onAddPatient={handleOpenNewPatient}
+                onScheduleVisit={() => handleOpenScheduleVisit(activePatient)}
               />
             )}
 
             {/* Main Content Area */}
             <main
               className={`flex-1 p-4 sm:p-6 lg:p-8 transition-all ${
-                userRole === 'doctor' ? 'md:ml-64' : 'max-w-7xl mx-auto w-full'
+                userRole === 'doctor' ? (isRTL ? 'md:mr-64' : 'md:ml-64') : 'max-w-7xl mx-auto w-full'
               }`}
             >
               {/* ==================================================== */}
-              {/* A. DOCTOR PORTAL PAGES (صفحات الطبيب)                 */}
+              {/* A. DOCTOR PORTAL PAGES                               */}
               {/* ==================================================== */}
               {userRole === 'doctor' && (
                 <>
@@ -376,6 +477,7 @@ export function App() {
                       doctorProfile={doctorProfile}
                       completedPatientIds={completedQueueIds}
                       onTogglePatientCompleted={handleTogglePatientCompleted}
+                      onToggleInClinic={handleToggleInClinic}
                       onReorderPatients={handleReorderPatients}
                       onDeleteVisit={handleDeleteVisit}
                       onSelectPatient={(p) => {
@@ -383,6 +485,8 @@ export function App() {
                         setCurrentView('doctor-patient-profile');
                       }}
                       onNavigate={(v) => setCurrentView(v)}
+                      onAddPatient={handleOpenNewPatient}
+                      onScheduleVisit={handleOpenScheduleVisit}
                     />
                   )}
 
@@ -406,6 +510,7 @@ export function App() {
                       onUpdateTooth={handleUpdateTooth}
                       onBatchUpdateTeeth={handleBatchUpdateTeeth}
                       onAddVisit={() => setIsConsultationOpen(true)}
+                      onScheduleVisit={handleOpenScheduleVisit}
                       onDeleteVisit={(visitId) => handleDeleteVisit(activePatient.id, visitId)}
                       onUploadImage={() => setIsUploadImageOpen(true)}
                       onEditPatient={() => handleOpenEditPatient(activePatient)}
@@ -421,7 +526,7 @@ export function App() {
                         setSelectedPatientId(p.id);
                         setCurrentView('doctor-patient-profile');
                       }}
-                      onNewConsultation={() => setIsConsultationOpen(true)}
+                      onNewConsultation={() => handleOpenScheduleVisit(activePatient)}
                       onDeleteVisit={handleDeleteVisit}
                     />
                   )}
@@ -436,7 +541,7 @@ export function App() {
                     />
                   )}
 
-                  {/* Doctor & Clinic Settings (Profile Picture Upload + Credentials) */}
+                  {/* Doctor & Clinic Settings */}
                   {currentView === 'doctor-settings' && (
                     <DoctorSettingsView
                       doctorProfile={doctorProfile}
@@ -448,7 +553,7 @@ export function App() {
               )}
 
               {/* ==================================================== */}
-              {/* B. PATIENT PORTAL PAGES (صفحات المريض)                */}
+              {/* B. PATIENT PORTAL PAGES                              */}
               {/* ==================================================== */}
               {userRole === 'patient' && (
                 <>
@@ -459,7 +564,6 @@ export function App() {
                       clinics={clinics}
                       onNavigate={(v) => setCurrentView(v)}
                       onBookAppointment={() => {
-                        // Patients can only inspect their visits view
                         setCurrentView('patient-visits');
                       }}
                     />
@@ -502,7 +606,7 @@ export function App() {
       )}
 
       {/* ========================================================================= */}
-      {/* Global Modals (Consultation Scheduler, New/Edit Patient, Upload Imaging)   */}
+      {/* Global Modals                                                             */}
       {/* ========================================================================= */}
       <NewConsultationModal
         isOpen={isConsultationOpen}
@@ -526,6 +630,18 @@ export function App() {
         isOpen={isUploadImageOpen}
         onClose={() => setIsUploadImageOpen(false)}
         onUpload={handleUploadImage}
+      />
+
+      <ScheduleVisitModal
+        isOpen={isScheduleVisitOpen}
+        onClose={() => {
+          setIsScheduleVisitOpen(false);
+          setScheduleTargetPatient(null);
+        }}
+        patients={patients}
+        clinics={clinics}
+        selectedPatient={scheduleTargetPatient || activePatient}
+        onSchedule={handleConfirmScheduleVisit}
       />
     </div>
   );

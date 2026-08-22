@@ -46,6 +46,8 @@ export interface Patient {
   attendingClinic?: string;
   medicalNotes?: string;
   treatmentType?: string;
+  inClinic?: boolean;
+  inClinicTime?: string;
   teeth: Record<number, ToothRecord>;
   visits: VisitRecord[];
   images: MedicalImage[];

@@ -2,13 +2,12 @@ import React, { useState } from 'react';
 
 interface PatientLoginProps {
   onLoginSuccess: (patientId?: string) => void;
-  onGoToSignUp: () => void;
+  onGoToSignUp?: () => void;
   onGoToDoctorLogin: () => void;
 }
 
 export const PatientLogin: React.FC<PatientLoginProps> = ({
   onLoginSuccess,
-  onGoToSignUp,
   onGoToDoctorLogin
 }) => {
   const [phoneNumber, setPhoneNumber] = useState('+1 (555) 019-2830');
@@ -83,25 +82,26 @@ export const PatientLogin: React.FC<PatientLoginProps> = ({
         </button>
       </form>
 
-      {/* Footer actions */}
-      <div className="mt-8 pt-6 border-t border-slate-100 flex flex-col gap-3 text-center text-xs">
-        <p className="text-slate-600">
-          New to DentalCare Pro?{' '}
-          <button
-            onClick={onGoToSignUp}
-            className="text-[#006194] font-bold hover:underline cursor-pointer"
-          >
-            Create Patient Account
-          </button>
+      {/* Doctor Authorization Note */}
+      <div className="mt-6 bg-slate-50 border border-slate-200/90 rounded-2xl p-3.5 text-center space-y-1.5">
+        <div className="flex items-center justify-center gap-1.5 text-slate-700 font-bold text-xs">
+          <span className="material-symbols-outlined text-[#006194] text-[17px]">verified_user</span>
+          <span>Doctor-Authorized Accounts Only</span>
+        </div>
+        <p className="text-[11px] text-slate-500 leading-relaxed">
+          يتم إنشاء وتفعيل حسابات المرضى حصرياً من قِبل الطبيب المعالج داخل العيادة لتأمين السجلات الطبية.
         </p>
+      </div>
 
+      {/* Footer actions */}
+      <div className="mt-6 pt-4 border-t border-slate-100 flex flex-col gap-2 text-center text-xs">
         <p className="text-slate-400">
-          Attending doctor?{' '}
+          Clinic Doctor or Staff?{' '}
           <button
             onClick={onGoToDoctorLogin}
-            className="text-slate-600 hover:text-[#006194] font-semibold hover:underline cursor-pointer"
+            className="text-slate-700 hover:text-[#006194] font-bold hover:underline cursor-pointer"
           >
-            Doctor / Staff Login
+            Doctor / Staff Login Portal
           </button>
         </p>
       </div>

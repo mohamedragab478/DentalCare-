@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { DoctorProfile, ClinicRoom } from '../types';
+import { useAppThemeLanguage } from '../context/ThemeLanguageContext';
 
 interface DoctorSettingsViewProps {
   doctorProfile: DoctorProfile;
@@ -31,6 +32,8 @@ export const DoctorSettingsView: React.FC<DoctorSettingsViewProps> = ({
   onUpdateDoctorProfile,
   clinics
 }) => {
+  const { t, isRTL } = useAppThemeLanguage();
+
   const [formData, setFormData] = useState<DoctorProfile>({ ...doctorProfile });
   const [customUrl, setCustomUrl] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -42,12 +45,12 @@ export const DoctorSettingsView: React.FC<DoctorSettingsViewProps> = ({
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      setPhotoError('Please select a valid image file (PNG, JPG, WEBP).');
+      setPhotoError(isRTL ? 'يرجى اختيار ملف صورة صالح (PNG, JPG, WEBP).' : 'Please select a valid image file (PNG, JPG, WEBP).');
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      setPhotoError('Image size should be less than 5MB.');
+      setPhotoError(isRTL ? 'يجب أن يكون حجم الصورة أقل من 5 ميجابايت.' : 'Image size should be less than 5MB.');
       return;
     }
 
@@ -81,48 +84,48 @@ export const DoctorSettingsView: React.FC<DoctorSettingsViewProps> = ({
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto pb-12 animate-in fade-in duration-200">
+    <div className="space-y-6 max-w-4xl mx-auto pb-12 animate-in fade-in duration-200 transition-colors">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-[#e2e8f0] shadow-xs">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-[#e2e8f0] dark:border-slate-800 shadow-xs">
         <div>
-          <h1 className="font-headline font-bold text-2xl text-slate-900 flex items-center gap-2">
-            <span className="material-symbols-outlined text-[#006194]">settings_account_box</span>
-            <span>Clinic & Doctor Profile Settings</span>
+          <h1 className="font-headline font-bold text-2xl text-slate-900 dark:text-white flex items-center gap-2">
+            <span className="material-symbols-outlined text-[#006194] dark:text-[#00a3e0]">settings_account_box</span>
+            <span>{t('settings')}</span>
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Manage your attending specialist credentials, profile photo, and operatory suite allocation
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            {isRTL ? "إدارة بيانات الطبيب المعالج، الصورة الشخصية، وتخصيص الغرفة والعيادة" : "Manage your attending specialist credentials, profile photo, and operatory suite allocation"}
           </p>
         </div>
 
         {saveSuccess && (
-          <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold rounded-xl animate-in fade-in slide-in-from-top-1">
+          <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-bold rounded-xl animate-in fade-in slide-in-from-top-1">
             <span className="material-symbols-outlined text-[18px]">check_circle</span>
-            <span>Changes Saved Successfully!</span>
+            <span>{isRTL ? "تم حفظ التعديلات بنجاح!" : "Changes Saved Successfully!"}</span>
           </div>
         )}
       </div>
 
       <form onSubmit={handleSave} className="space-y-6">
-        {/* 1. Doctor Profile Picture Upload Section (User explicit requirement) */}
-        <div className="bg-white p-6 sm:p-8 rounded-2xl border border-[#e2e8f0] shadow-xs">
-          <div className="border-b border-slate-100 pb-4 mb-6">
-            <h2 className="font-headline font-bold text-lg text-slate-900 flex items-center gap-2">
-              <span className="material-symbols-outlined text-[#006194] text-[22px]">account_circle</span>
-              <span>Attending Doctor Profile Picture</span>
+        {/* 1. Doctor Profile Picture Upload Section */}
+        <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-[#e2e8f0] dark:border-slate-800 shadow-xs">
+          <div className="border-b border-slate-100 dark:border-slate-800 pb-4 mb-6">
+            <h2 className="font-headline font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+              <span className="material-symbols-outlined text-[#006194] dark:text-[#00a3e0] text-[22px]">account_circle</span>
+              <span>{isRTL ? "الصورة الشخصية للطبيب" : "Attending Doctor Profile Picture"}</span>
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Upload your official clinical portrait or select a verified specialist avatar.
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              {isRTL ? "ارفع صورتك السريرية الرسمية أو اختر من الصور النموذجية المعتمدة." : "Upload your official clinical portrait or select a verified specialist avatar."}
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
             {/* Current Avatar Preview */}
-            <div className="md:col-span-4 flex flex-col items-center justify-center p-4 bg-slate-50 rounded-2xl border border-slate-200/80 text-center">
+            <div className="md:col-span-4 flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-800/60 rounded-3xl border border-slate-200/80 dark:border-slate-700 text-center">
               <div className="relative group">
                 <img
                   src={formData.avatar || PRESET_AVATARS[0].url}
                   alt={formData.name}
-                  className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-lg group-hover:opacity-90 transition-all"
+                  className="w-32 h-32 rounded-full object-cover border-4 border-white dark:border-slate-700 shadow-lg group-hover:opacity-90 transition-all"
                   onError={(e) => {
                     (e.target as HTMLElement).setAttribute('src', PRESET_AVATARS[0].url);
                   }}
@@ -130,109 +133,95 @@ export const DoctorSettingsView: React.FC<DoctorSettingsViewProps> = ({
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="absolute bottom-1 right-1 w-9 h-9 rounded-full bg-[#006194] hover:bg-[#004b73] text-white flex items-center justify-center shadow-md border-2 border-white transition-all cursor-pointer"
+                  className={`absolute bottom-1 ${isRTL ? 'left-1' : 'right-1'} w-9 h-9 rounded-full bg-[#006194] hover:bg-[#004b73] text-white flex items-center justify-center shadow-md border-2 border-white dark:border-slate-800 transition-all cursor-pointer`}
                   title="Upload new photo"
                 >
                   <span className="material-symbols-outlined text-[18px]">photo_camera</span>
                 </button>
               </div>
 
-              <h4 className="font-bold text-sm text-slate-900 mt-3">{formData.name}</h4>
-              <p className="text-xs text-[#006194] font-medium">{formData.specialty}</p>
-              <span className="mt-2 text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-blue-100/80 text-[#006194]">
-                {formData.assignedClinic}
-              </span>
+              <span className="font-bold text-sm text-slate-900 dark:text-white mt-3">{formData.name}</span>
+              <span className="text-xs text-[#006194] dark:text-[#00a3e0] font-medium">{formData.specialty}</span>
             </div>
 
-            {/* Upload Controls & Presets */}
+            {/* Upload & Presets Actions */}
             <div className="md:col-span-8 space-y-4">
-              {/* Hidden file input */}
               <input
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
                 onChange={handleFileUpload}
                 className="hidden"
-                id="doctor-photo-upload-input"
               />
 
-              {/* Upload Button & Reset */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-                  Upload From Computer
-                </label>
-                <div className="flex flex-wrap items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="px-4 py-2.5 bg-[#006194] text-white hover:bg-[#004b73] rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition-all cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">upload</span>
-                    <span>Upload Image File</span>
-                  </button>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-4 py-2.5 rounded-xl bg-[#006194] hover:bg-[#004b73] text-white text-xs font-bold flex items-center gap-2 shadow-xs transition-all cursor-pointer active:scale-98"
+                >
+                  <span className="material-symbols-outlined text-[18px]">cloud_upload</span>
+                  <span>{isRTL ? "رفع صورة من جهازك" : "Upload Local Photo"}</span>
+                </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleSelectPreset(PRESET_AVATARS[0].url)}
-                    className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">restart_alt</span>
-                    <span>Reset Default Photo</span>
-                  </button>
-                </div>
-                {photoError && (
-                  <p className="text-xs text-red-600 mt-1.5 font-medium">{photoError}</p>
-                )}
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, avatar: PRESET_AVATARS[0].url }))}
+                  className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold border border-slate-200 dark:border-slate-700 transition-all cursor-pointer"
+                >
+                  {isRTL ? "استعادة الصورة الافتراضية" : "Reset to Default"}
+                </button>
               </div>
 
-              {/* Direct Image URL Input */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Or Paste Photo Web URL
+              {photoError && (
+                <p className="text-xs text-red-600 dark:text-red-400 font-semibold">{photoError}</p>
+              )}
+
+              {/* Direct URL Input */}
+              <div className="pt-2">
+                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1">
+                  {isRTL ? "أو أدخل رابط صورة مباشرة (URL)" : "Or Paste Direct Image Web URL"}
                 </label>
                 <div className="flex gap-2">
                   <input
                     type="url"
                     value={customUrl}
                     onChange={(e) => setCustomUrl(e.target.value)}
-                    placeholder="https://example.com/doctor-portrait.jpg"
-                    className="flex-1 px-3.5 py-2 rounded-xl border border-slate-200 bg-[#f8fafc] text-xs text-slate-800 focus:outline-none focus:border-[#006194]"
+                    placeholder="https://example.com/doctor-photo.jpg"
+                    className="flex-1 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[#006194]"
                   />
                   <button
                     type="button"
                     onClick={handleApplyCustomUrl}
-                    disabled={!customUrl.trim()}
-                    className="px-4 py-2 bg-slate-800 hover:bg-slate-900 disabled:opacity-40 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+                    className="px-4 py-2 rounded-xl border border-[#006194] text-[#006194] dark:text-[#00a3e0] hover:bg-blue-50 dark:hover:bg-slate-800 text-xs font-bold cursor-pointer"
                   >
-                    Apply URL
+                    {isRTL ? "تطبيق الرابط" : "Apply URL"}
                   </button>
                 </div>
               </div>
 
-              {/* Specialist Presets */}
+              {/* Presets Selection */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-                  Select Specialist Preset Avatar
+                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">
+                  {isRTL ? "نماذج صور معتمدة" : "Select from Verified Specialist Avatars"}
                 </label>
-                <div className="flex flex-wrap gap-3">
+                <div className="grid grid-cols-4 gap-3">
                   {PRESET_AVATARS.map((preset, idx) => (
-                    <button
+                    <div
                       key={idx}
-                      type="button"
                       onClick={() => handleSelectPreset(preset.url)}
-                      className={`relative rounded-full p-0.5 transition-all cursor-pointer ${
+                      className={`cursor-pointer rounded-2xl p-1 border-2 transition-all overflow-hidden ${
                         formData.avatar === preset.url
-                          ? 'ring-3 ring-[#006194] shadow-md scale-105'
-                          : 'hover:ring-2 hover:ring-slate-300 opacity-80 hover:opacity-100'
+                          ? 'border-[#006194] ring-2 ring-[#006194]/20'
+                          : 'border-slate-200 dark:border-slate-700 hover:border-slate-400'
                       }`}
-                      title={preset.name}
                     >
                       <img
                         src={preset.url}
                         alt={preset.name}
-                        className="w-11 h-11 rounded-full object-cover"
+                        className="w-full aspect-square object-cover rounded-xl"
                       />
-                    </button>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -240,128 +229,117 @@ export const DoctorSettingsView: React.FC<DoctorSettingsViewProps> = ({
           </div>
         </div>
 
-        {/* 2. Doctor Practitioner Info */}
-        <div className="bg-white p-6 sm:p-8 rounded-2xl border border-[#e2e8f0] shadow-xs space-y-4">
-          <div className="border-b border-slate-100 pb-4 mb-4">
-            <h2 className="font-headline font-bold text-lg text-slate-900 flex items-center gap-2">
-              <span className="material-symbols-outlined text-[#006194] text-[22px]">badge</span>
-              <span>Practitioner Clinical Details</span>
+        {/* 2. Doctor Information Fields */}
+        <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-[#e2e8f0] dark:border-slate-800 shadow-xs space-y-4">
+          <div className="border-b border-slate-100 dark:border-slate-800 pb-4 mb-4">
+            <h2 className="font-headline font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+              <span className="material-symbols-outlined text-[#006194] dark:text-[#00a3e0] text-[22px]">badge</span>
+              <span>{isRTL ? "بيانات الاعتماد والتخصص" : "Specialist Profile & Credentials"}</span>
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Personal credentials and specialty shown across consultation sheets and queue records.
-            </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Practitioner Full Name
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                {isRTL ? "اسم الطبيب" : "Full Name"} *
               </label>
               <input
                 type="text"
                 required
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-[#f8fafc] text-sm text-slate-800 focus:outline-none focus:border-[#006194]"
-                placeholder="e.g. Dr. Ahmed Al-Sayed"
+                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-[#006194]"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Clinical Specialty / Field
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                {isRTL ? "التخصص السريري" : "Clinical Specialty"} *
               </label>
               <input
                 type="text"
                 required
                 value={formData.specialty}
-                onChange={(e) => setFormData({ ...formData, specialty: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-[#f8fafc] text-sm text-slate-800 focus:outline-none focus:border-[#006194]"
-                placeholder="e.g. Prosthodontics & Implantology"
+                onChange={(e) => setFormData(prev => ({ ...prev, specialty: e.target.value }))}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-[#006194]"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Assigned Operatory Suite (عيادة الطبيب)
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                {isRTL ? "رقم الهاتف" : "Phone Number"} *
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.phone}
+                onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-mono focus:outline-none focus:border-[#006194]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                {isRTL ? "البريد الإلكتروني" : "Email Address"} *
+              </label>
+              <input
+                type="email"
+                required
+                value={formData.email}
+                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-[#006194]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                {isRTL ? "العيادة والغرفة المخصصة" : "Assigned Clinic Suite"}
               </label>
               <select
                 value={formData.assignedClinic}
-                onChange={(e) => setFormData({ ...formData, assignedClinic: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-[#f8fafc] text-sm text-slate-800 focus:outline-none focus:border-[#006194]"
+                onChange={(e) => setFormData(prev => ({ ...prev, assignedClinic: e.target.value }))}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-[#006194]"
               >
                 {clinics.map((c) => (
-                  <option key={c.id} value={c.name}>
-                    {c.name} {c.id === 1 ? '(Primary Prosthodontics)' : c.id === 2 ? '(Oral Surgery)' : c.id === 3 ? '(Endodontics)' : '(Pediatric & Ortho)'}
-                  </option>
+                  <option key={c.id} value={c.name}>{c.name}</option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Consultation Fee ($ USD)
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                {isRTL ? "رقم ترخيص مزاولة المهنة" : "License Number"}
               </label>
               <input
-                type="number"
-                min={0}
-                value={formData.consultationFee}
-                onChange={(e) => setFormData({ ...formData, consultationFee: parseFloat(e.target.value) || 0 })}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-[#f8fafc] text-sm text-slate-800 focus:outline-none focus:border-[#006194]"
-                placeholder="150"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Clinic Contact Phone
-              </label>
-              <input
-                type="tel"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-[#f8fafc] text-sm text-slate-800 focus:outline-none focus:border-[#006194]"
-                placeholder="+1 (555) 234-5678"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Clinic Email Address
-              </label>
-              <input
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-[#f8fafc] text-sm text-slate-800 focus:outline-none focus:border-[#006194]"
-                placeholder="dr.ahmed@dentalcarepro.clinic"
+                type="text"
+                value={formData.licenseNumber}
+                onChange={(e) => setFormData(prev => ({ ...prev, licenseNumber: e.target.value }))}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-mono focus:outline-none focus:border-[#006194]"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-              Doctor Bio & Clinical Focus
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+              {isRTL ? "النبذة المهنية والمؤهلات" : "Professional Bio & Qualifications"}
             </label>
             <textarea
               rows={3}
-              value={formData.bio || ''}
-              onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-[#f8fafc] text-sm text-slate-800 focus:outline-none focus:border-[#006194] resize-none"
-              placeholder="Specializing in complex restorative prosthodontics, digital smile design, and guided implant surgery with over 12 years of clinical excellence."
+              value={formData.bio}
+              onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-[#006194]"
             />
           </div>
-        </div>
 
-        {/* 3. Action Buttons */}
-        <div className="flex items-center justify-end gap-3 pt-2">
-          <button
-            type="submit"
-            className="px-8 py-3 bg-[#006194] hover:bg-[#004b73] text-white font-bold text-sm rounded-xl shadow-md transition-all active:scale-98 cursor-pointer flex items-center gap-2"
-          >
-            <span className="material-symbols-outlined text-[18px]">save</span>
-            <span>Save Profile & Clinic Settings</span>
-          </button>
+          <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-800">
+            <button
+              type="submit"
+              className="px-6 py-2.5 rounded-xl bg-[#006194] hover:bg-[#004b73] text-white text-xs font-bold shadow-md cursor-pointer transition-transform active:scale-95 flex items-center gap-1.5"
+            >
+              <span className="material-symbols-outlined text-[18px]">save</span>
+              <span>{t('save')}</span>
+            </button>
+          </div>
         </div>
       </form>
     </div>
