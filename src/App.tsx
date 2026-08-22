@@ -338,6 +338,30 @@ export function App() {
     setEditingPatient(null);
   };
 
+  const handleSelectExistingPatientToQueue = (existingPatient: Patient, treatmentType?: string) => {
+    setPatients((prev) => {
+      const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const todayDate = new Date().toISOString().split('T')[0];
+
+      const updatedTarget: Patient = {
+        ...existingPatient,
+        inClinic: true,
+        inClinicTime: nowTime,
+        lastVisit: todayDate,
+        treatmentType: treatmentType || existingPatient.treatmentType || 'General Care'
+      };
+
+      const others = prev.filter((p) => p.id !== existingPatient.id);
+      const alreadyInClinic = others.filter((p) => p.inClinic);
+      const notInClinic = others.filter((p) => !p.inClinic);
+
+      return [...alreadyInClinic, updatedTarget, ...notInClinic];
+    });
+
+    setSelectedPatientId(existingPatient.id);
+    setIsAddPatientOpen(false);
+  };
+
   const handleOpenEditPatient = (patient: Patient) => {
     setEditingPatient(patient);
     setIsAddPatientOpen(true);
@@ -714,6 +738,8 @@ export function App() {
           setEditingPatient(null);
         }}
         onAddPatient={handleSavePatient}
+        existingPatients={patients}
+        onSelectExistingPatient={handleSelectExistingPatientToQueue}
         initialPatient={editingPatient}
       />
 
