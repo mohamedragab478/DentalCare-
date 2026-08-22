@@ -31,6 +31,7 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
 
   // Tab 2 / Edit Form State: New Patient
   const [name, setName] = useState('');
+  const [avatar, setAvatar] = useState('');
   const [gender, setGender] = useState<'Male' | 'Female'>('Male');
   const [age, setAge] = useState<string>('30');
   const [phone, setPhone] = useState('+1 (555) 019-2830');
@@ -45,6 +46,7 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
   useEffect(() => {
     if (initialPatient) {
       setName(initialPatient.name || '');
+      setAvatar(initialPatient.avatar || '');
       setGender(initialPatient.gender || 'Male');
       setAge(initialPatient.age?.toString() || '30');
       setPhone(initialPatient.phone || '');
@@ -54,6 +56,7 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
       setCreatedCredentials(null);
     } else {
       setName('');
+      setAvatar('');
       setGender('Male');
       setAge('30');
       setPhone('+1 (555) ');
@@ -88,6 +91,27 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
     [existingPatients, selectedExistingId, filteredExistingPatients]
   );
 
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target?.result) {
+        setAvatar(event.target.result as string);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemovePhoto = () => {
+    setAvatar('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   if (!isOpen) return null;
 
   const handleAddExistingToQueue = () => {
@@ -110,11 +134,13 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
       .slice(0, 2);
 
     const today = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const finalAvatar = avatar.trim() ? avatar.trim() : undefined;
 
     if (isEditMode && initialPatient) {
       const updatedPatient: Patient = {
         ...initialPatient,
         name,
+        avatar: finalAvatar,
         initials: initials || initialPatient.initials,
         age: parseInt(age, 10) || initialPatient.age,
         gender,
@@ -130,6 +156,7 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
       const newPatient: Patient = {
         id: assignedId,
         name,
+        avatar: finalAvatar,
         initials: initials || 'PT',
         age: parseInt(age, 10) || 30,
         gender,
@@ -410,6 +437,79 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
                 placeholder={isRTL ? "مثال: محمد أحمد" : "e.g. John Doe"}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-xs focus:outline-none focus:border-[#006194]"
               />
+            </div>
+
+            {/* Patient Photo (Doctor can set or leave blank by default) */}
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl">
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                {isRTL ? "صورة الملف الشخصي للمريض (اختياري)" : "Patient Profile Photo (Optional)"}
+              </label>
+              
+              <div className="flex items-center gap-3">
+                {avatar ? (
+                  <div className="relative shrink-0">
+                    <img
+                      src={avatar}
+                      alt="Preview"
+                      className="w-13 h-13 rounded-full object-cover border-2 border-slate-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleRemovePhoto}
+                      title={isRTL ? "حذف الصورة" : "Remove photo"}
+                      className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 text-white rounded-full flex items-center justify-center text-xs shadow-xs cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">close</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-13 h-13 rounded-full bg-slate-200 text-slate-600 font-bold text-xs flex items-center justify-center shrink-0 border border-slate-300">
+                    {name.trim()
+                      ? name
+                          .split(' ')
+                          .map((n) => n[0])
+                          .join('')
+                          .toUpperCase()
+                          .slice(0, 2)
+                      : 'PT'}
+                  </div>
+                )}
+
+                <div className="flex-1 space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      accept="image/*"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                      id="patient-avatar-upload"
+                    />
+                    <label
+                      htmlFor="patient-avatar-upload"
+                      className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">upload_file</span>
+                      <span>{avatar ? (isRTL ? "تغيير الصورة" : "Change Photo") : (isRTL ? "تحديد صورة" : "Upload Photo")}</span>
+                    </label>
+
+                    {avatar && (
+                      <button
+                        type="button"
+                        onClick={handleRemovePhoto}
+                        className="px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded-xl font-medium transition-colors cursor-pointer"
+                      >
+                        {isRTL ? "إزالة الصورة" : "Remove"}
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    {isRTL 
+                      ? "الافتراضي بدون صورة، ويمكن للطبيب إضافة صورة في أي وقت." 
+                      : "Default is no photo. Doctor can add or update photo anytime."}
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">

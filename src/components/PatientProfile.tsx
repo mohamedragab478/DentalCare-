@@ -7,6 +7,7 @@ import { useAppThemeLanguage } from '../context/ThemeLanguageContext';
 interface PatientProfileProps {
   patient: Patient;
   onBack: () => void;
+  onUpdatePatient?: (updatedPatient: Patient) => void;
   onUpdateTooth: (
     toothId: number,
     status: ToothStatus,
@@ -36,6 +37,7 @@ interface PatientProfileProps {
 export const PatientProfile: React.FC<PatientProfileProps> = ({
   patient,
   onBack,
+  onUpdatePatient,
   onUpdateTooth,
   onBatchUpdateTeeth,
   onAddVisit,
@@ -50,8 +52,31 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
   const [activeTab, setActiveTab] = useState<'Overview' | 'Dental Chart' | 'Visits' | 'Medical Images'>('Dental Chart');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [visitToDelete, setVisitToDelete] = useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  const defaultAvatar = 'https://lh3.googleusercontent.com/aida-public/AB6AXuBjPiLDyWepU0CeZ8X8tIln_VVoHrQtBpyU8CiodPf3F7v4BwoQcpHQcQYAzQPGLjtRhljnPUN7UWpWts7Z9cw13fBY7FOdrq2AntU5wzQDzRpOLGsrVmX5g7cIZn-DxUOUuNPZ83xs-iLQObirdHXR0A0t5KUcZiOoTP4BNMOMdEutnr0mgJO-uOU3wJ98k7MRm-dTt8NHMhFnTDXibTruBygcqXVVBZHEzQlUS7eeDlfczpm5v0NK2g';
+  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target?.result && onUpdatePatient) {
+        onUpdatePatient({
+          ...patient,
+          avatar: event.target.result as string
+        });
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveAvatar = () => {
+    if (onUpdatePatient) {
+      onUpdatePatient({
+        ...patient,
+        avatar: undefined
+      });
+    }
+  };
 
   const countdown = getAppointmentCountdown(patient.nextVisit, patient.nextVisitTime);
 
@@ -92,14 +117,55 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
         )}
       </div>
 
+      {/* Hidden Avatar File Input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept="image/*"
+        onChange={handleAvatarUpload}
+        className="hidden"
+        id="profile-avatar-upload"
+      />
+
       {/* Patient Header Card */}
       <div className="bg-white dark:bg-slate-900 border border-[#e2e8f0] dark:border-slate-800 rounded-3xl p-5 md:p-6 mb-6 shadow-xs flex flex-wrap justify-between items-start md:items-center gap-4">
         <div className="flex gap-5 items-center">
-          <img
-            src={patient.avatar || defaultAvatar}
-            alt={patient.name}
-            className="w-18 h-18 md:w-20 md:h-20 rounded-full object-cover border-2 border-slate-100 dark:border-slate-800 shadow-2xs"
-          />
+          <div className="relative group">
+            {patient.avatar ? (
+              <img
+                src={patient.avatar}
+                alt={patient.name}
+                className="w-18 h-18 md:w-20 md:h-20 rounded-full object-cover border-2 border-slate-100 dark:border-slate-800"
+              />
+            ) : (
+              <div className="w-18 h-18 md:w-20 md:h-20 rounded-full bg-slate-100 dark:bg-slate-800 text-[#006194] dark:text-[#00a3e0] font-bold text-xl md:text-2xl flex items-center justify-center border-2 border-slate-200 dark:border-slate-700">
+                {patient.initials || 'PT'}
+              </div>
+            )}
+
+            {!isReadOnly && onUpdatePatient && (
+              <div className="absolute inset-0 rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 p-1">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  title={isRTL ? "تغيير أو رفع صورة" : "Upload / Change photo"}
+                  className="p-1 hover:bg-white/20 rounded-full text-xs cursor-pointer flex items-center justify-center"
+                >
+                  <span className="material-symbols-outlined text-[18px]">photo_camera</span>
+                </button>
+                {patient.avatar && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveAvatar}
+                    title={isRTL ? "حذف الصورة والرجوع للحروف" : "Remove photo"}
+                    className="p-1 hover:bg-red-500/80 rounded-full text-xs cursor-pointer text-red-300 flex items-center justify-center"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">delete</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
           <div>
             <div className="flex items-center gap-3 mb-1.5 flex-wrap">
               <h1 className="font-headline font-bold text-2xl md:text-3xl text-slate-900 dark:text-white">{patient.name}</h1>

@@ -66,11 +66,17 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
         {/* Profile Card (4 cols) */}
         <div className="md:col-span-4 bg-white dark:bg-slate-900 rounded-3xl border border-[#e2e8f0] dark:border-slate-800 p-6 shadow-xs flex flex-col items-center text-center">
           <div className="relative mb-4">
-            <img
-              src={patient.avatar || patientPhoto}
-              alt={patient.name}
-              className="w-24 h-24 rounded-full object-cover border-4 border-slate-50 dark:border-slate-800 shadow-sm"
-            />
+            {patient.avatar ? (
+              <img
+                src={patient.avatar}
+                alt={patient.name}
+                className="w-24 h-24 rounded-full object-cover border-4 border-slate-50 dark:border-slate-800"
+              />
+            ) : (
+              <div className="w-24 h-24 rounded-full bg-slate-100 dark:bg-slate-800 text-[#006194] dark:text-[#00a3e0] font-bold text-2xl flex items-center justify-center border-4 border-slate-50 dark:border-slate-800">
+                {patient.initials || 'PT'}
+              </div>
+            )}
             <span className="absolute bottom-0 right-0 w-5 h-5 bg-[#10b981] border-2 border-white dark:border-slate-900 rounded-full"></span>
           </div>
 

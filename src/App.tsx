@@ -621,6 +621,7 @@ export function App() {
                     <PatientProfile
                       patient={activePatient}
                       onBack={() => setCurrentView('doctor-patients')}
+                      onUpdatePatient={handleSavePatient}
                       onUpdateTooth={handleUpdateTooth}
                       onBatchUpdateTeeth={handleBatchUpdateTeeth}
                       onAddVisit={() => setIsConsultationOpen(true)}

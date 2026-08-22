@@ -114,7 +114,6 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
         <div>
           <h1 className="font-headline font-bold text-2xl sm:text-3xl text-slate-900 dark:text-white flex items-center gap-2">
             <span>{t('welcome_back')}, {currentDoctorName}</span>
-            <span>👨‍⚕️</span>
           </h1>
           <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mt-1">
             {t('clinical_overview')} • {currentSpecialty} • {currentClinicName}

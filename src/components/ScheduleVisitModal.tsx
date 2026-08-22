@@ -357,7 +357,7 @@ export const ScheduleVisitModal: React.FC<ScheduleVisitModalProps> = ({
           </div>
 
           {/* Live Patient Portal Preview Banner */}
-          <div className="p-4 rounded-2xl bg-linear-to-r from-blue-900 to-[#006194] text-white space-y-1.5 shadow-md">
+          <div className="p-4 rounded-2xl bg-[#004b73] text-white space-y-1.5 border border-[#003b5c]">
             <div className="flex items-center justify-between text-xs font-bold">
               <span className="flex items-center gap-1.5 opacity-90">
                 <span className="material-symbols-outlined text-[16px]">visibility</span>

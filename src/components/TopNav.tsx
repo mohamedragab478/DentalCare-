@@ -33,8 +33,9 @@ export const TopNav: React.FC<TopNavProps> = ({
   const doctorSpecialty = doctorProfile?.specialty || 'Prosthodontist';
   const doctorClinic = doctorProfile?.assignedClinic || 'Clinic 1';
 
-  const patientAvatar = activePatient?.avatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuCff4LEmqAkU8xYpwAnrA1mCIcr5F4QFgt-xHUZuN1RS46NhxWswGWtb1ife39PcANIhIT6tcMLq5zJbUimAFrNPcjtx_1Zk9TkMinJiwzMu8cgYUFulj42DT502WAC22L9Cmao6p8L0QMz5UTYmsCbcvvrWdcadrEbnJBDBXhK8KdXzuY9W47A2j3zBpMjz8Na33CRIM3VQl15ByJs3EsVwBplDm-F5ziqTnfjusXcrCX9jvMa6NXfUg';
+  const patientAvatar = activePatient?.avatar;
   const patientName = activePatient?.name || 'Mohamed Ali';
+  const patientInitials = activePatient?.initials || 'PT';
 
   return (
     <header className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-4 sm:px-6 h-16 bg-white dark:bg-slate-900 border-b border-[#e2e8f0] dark:border-slate-800 transition-colors">
