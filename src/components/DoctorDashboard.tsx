@@ -384,14 +384,21 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
 
             <div className="space-y-3">
               {clinics.map((room) => {
-                const isCurrentDoctorRoom =
-                  room.doctorName === doctorProfile?.name ||
-                  (doctorProfile?.assignedClinic && room.name.toLowerCase() === doctorProfile.assignedClinic.toLowerCase());
+                const isCurrentDoctorRoom = Boolean(
+                  room.status === 'occupied' &&
+                  room.doctorName &&
+                  (
+                    room.doctorName === doctorProfile?.name ||
+                    room.doctorName === 'Dr. Ahmed' ||
+                    room.doctorName === 'Dr. Ahmed Al-Sayed' ||
+                    (doctorProfile?.assignedClinic && room.name.toLowerCase() === doctorProfile.assignedClinic.toLowerCase())
+                  )
+                );
 
                 const isOccupiedByOther = Boolean(
+                  room.status === 'occupied' &&
                   room.doctorName &&
-                  room.doctorName !== doctorProfile?.name &&
-                  room.status === 'occupied'
+                  !isCurrentDoctorRoom
                 );
 
                 return (

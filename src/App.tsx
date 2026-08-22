@@ -500,7 +500,12 @@ export function App() {
             doctorSpecialty: doctorProfile.specialty
           };
         }
-        if (room.doctorName === doctorProfile.name || room.doctorName === INITIAL_DOCTOR.name) {
+        if (
+          room.doctorName === doctorProfile.name ||
+          room.doctorName === INITIAL_DOCTOR.name ||
+          (room.doctorName && room.doctorName.includes('Ahmed')) ||
+          (doctorProfile.assignedClinic && room.name.toLowerCase() === doctorProfile.assignedClinic.toLowerCase())
+        ) {
           return {
             ...room,
             status: 'available',

@@ -1,7 +1,7 @@
 import { Patient, ClinicRoom } from '../types';
 
 export const INITIAL_DOCTOR = {
-  name: 'Dr. Ahmed',
+  name: 'Dr. Ahmed Al-Sayed',
   specialty: 'Prosthodontics & Implantology',
   clinic: 'Clinic 1',
   avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCiZbB6Im6Xu7XRgyfySUQ0rnzkpsVPotlguTz9Lc_4_emwRGMwsUZWk3jCQBBPjON9pZuCcuZfZ0KaU-MkTNwd9E8-kJE4qE1RADCiJB27t36OOZEyT-ZN1pDoXnCmgs2ooji4aVFiB8wTydeRlOVM82YUG3ff7vcdwl0bunNK8c4GwHUUZsSmM2gZ89ZmSwEnEOur8ZdQ9453Rv-Z-PYTDwMmgCtqMDKB-feeN-LgSgmRtgHZDdjoNg',
@@ -13,7 +13,7 @@ export const CLINIC_ROOMS: ClinicRoom[] = [
   {
     id: 1,
     name: 'Clinic 1',
-    doctorName: 'Dr. Ahmed',
+    doctorName: 'Dr. Ahmed Al-Sayed',
     doctorAvatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCkPYVPmuNczQ83HKwL_IM-WpaH4bUz-B4CLXpvtp79R5FvsWyKWe0OpjU6lyER-9OF6BCbNqxN8oGap9BTbSXKTdVJ7yP47iURdE6PRcOjbVW5hrf3BRSUldQf9W_gvGiEpbWP9qoobc62Zw17tAu9ZcVtbqHVilIWmdbEBSj6Y4trzngyDmuVlgkD9S-ErJ0_tD-z6hVh_qdA1PEMMNj-na2z-nHIm91CuVijGPaiBKeXkl7KSv2gdA',
     doctorSpecialty: 'Prosthodontics & Surgery',
     status: 'occupied',
