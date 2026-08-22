@@ -56,16 +56,6 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
       id: 'doctor-visits' as AppView,
       label: t('visits_and_schedule'),
       icon: 'calendar_today'
-    },
-    {
-      id: 'doctor-clinics' as AppView,
-      label: t('clinic_status'),
-      icon: 'clinical_notes'
-    },
-    {
-      id: 'doctor-settings' as AppView,
-      label: t('settings'),
-      icon: 'settings'
     }
   ];
 
