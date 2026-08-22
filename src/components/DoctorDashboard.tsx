@@ -124,7 +124,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
           {onScheduleVisit && (
             <button
               onClick={() => onScheduleVisit()}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 shadow-xs cursor-pointer active:scale-95"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs transition-colors flex items-center gap-2 cursor-pointer"
               id="dashboard-schedule-visit-btn"
             >
               <span className="material-symbols-outlined text-[18px]">calendar_add_on</span>
@@ -135,38 +135,13 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
           {onAddPatient && (
             <button
               onClick={onAddPatient}
-              className="bg-[#006194] hover:bg-[#004b73] text-white px-4 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 shadow-xs cursor-pointer active:scale-95"
+              className="bg-[#006194] hover:bg-[#004b73] text-white px-4 py-2.5 rounded-xl font-bold text-xs transition-colors flex items-center gap-2 cursor-pointer"
               id="dashboard-register-patient-btn"
             >
               <span className="material-symbols-outlined text-[18px]">person_add</span>
               <span>{t('new_patient')}</span>
             </button>
           )}
-
-          <div className="hidden md:flex items-center gap-3">
-            <button 
-              onClick={() => onNavigate('doctor-settings')}
-              className="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 border border-[#e2e8f0] dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-[#006194] dark:hover:text-[#00a3e0] transition-colors relative shadow-2xs cursor-pointer"
-              title={t('settings')}
-            >
-              <span className="material-symbols-outlined text-[20px]">settings</span>
-            </button>
-
-            <div 
-              onClick={() => onNavigate('doctor-settings')}
-              className="flex items-center gap-3 bg-white dark:bg-slate-800 px-4 py-2 rounded-2xl border border-[#e2e8f0] dark:border-slate-700 shadow-2xs hover:border-[#006194] dark:hover:border-slate-600 cursor-pointer transition-all"
-            >
-              <img
-                src={currentAvatar}
-                alt={currentDoctorName}
-                className="w-8 h-8 rounded-full object-cover border border-[#e2e8f0] dark:border-slate-700"
-              />
-              <div className="flex flex-col text-start">
-                <span className="text-xs font-bold text-slate-900 dark:text-white">{currentDoctorName}</span>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{currentSpecialty}</span>
-              </div>
-            </div>
-          </div>
         </div>
       </header>
 

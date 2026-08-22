@@ -75,6 +75,8 @@ export interface DoctorProfile {
   bio?: string;
 }
 
+export type UserRole = 'doctor' | 'patient';
+
 export type AppView = 
   | 'auth-gateway'
   | 'doctor-login'

@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { AppView, Patient, ToothStatus, ClinicRoom, VisitRecord, MedicalImage, DoctorProfile } from './types';
 import { INITIAL_PATIENTS, CLINIC_ROOMS, INITIAL_DOCTOR } from './data/initialData';
-import { TopNav } from './components/TopNav';
-import { Sidebar } from './components/Sidebar';
+import { UnifiedHeader } from './components/UnifiedHeader';
 import { DoctorDashboard } from './components/DoctorDashboard';
 import { PatientTable } from './components/PatientTable';
 import { PatientProfile } from './components/PatientProfile';
@@ -549,38 +548,24 @@ export function App() {
       {/* 2. INSIDE PORTAL                                                          */}
       {/* ========================================================================= */}
       {!isAuthView && (
-        <>
-          {/* Top Navigation */}
-          <TopNav
+        <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 transition-colors">
+          {/* Single Unified Header */}
+          <UnifiedHeader
             currentView={currentView}
             onNavigate={(view) => setCurrentView(view)}
             userRole={userRole}
             doctorProfile={doctorProfile}
             activePatient={activePatient}
             onLogout={handleLogout}
+            onAddPatient={handleOpenNewPatient}
+            onScheduleVisit={() => handleOpenScheduleVisit(activePatient)}
           />
 
-          <div className="flex pt-16 flex-1">
-            {/* Sidebar shown ONLY for Doctor in the clinical portal */}
-            {userRole === 'doctor' && (
-              <Sidebar
-                currentView={currentView}
-                onNavigate={(view) => setCurrentView(view)}
-                onNewConsultation={() => setIsConsultationOpen(true)}
-                onAddPatient={handleOpenNewPatient}
-                onScheduleVisit={() => handleOpenScheduleVisit(activePatient)}
-              />
-            )}
-
-            {/* Main Content Area */}
-            <main
-              className={`flex-1 p-4 sm:p-6 lg:p-8 transition-all ${
-                userRole === 'doctor' ? (isRTL ? 'md:mr-64' : 'md:ml-64') : 'max-w-7xl mx-auto w-full'
-              }`}
-            >
-              {/* ==================================================== */}
-              {/* A. DOCTOR PORTAL PAGES                               */}
-              {/* ==================================================== */}
+          {/* Main Workspace Area (Clean, Full-Width) */}
+          <main className="flex-1 max-w-7xl mx-auto w-full p-4 sm:p-6 lg:p-8">
+            {/* ==================================================== */}
+            {/* A. DOCTOR PORTAL PAGES                               */}
+            {/* ==================================================== */}
               {userRole === 'doctor' && (
                 <>
                   {/* Doctor Dashboard */}
@@ -717,8 +702,7 @@ export function App() {
                 </>
               )}
             </main>
-          </div>
-        </>
+        </div>
       )}
 
       {/* ========================================================================= */}
