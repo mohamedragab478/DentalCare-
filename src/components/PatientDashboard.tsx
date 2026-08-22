@@ -1,11 +1,12 @@
 import React from 'react';
-import { Patient, ClinicRoom } from '../types';
+import { Patient, ClinicRoom, DoctorProfile } from '../types';
 import { getAppointmentCountdown, formatDateArabic } from '../utils/dateUtils';
 import { useAppThemeLanguage } from '../context/ThemeLanguageContext';
 
 interface PatientDashboardProps {
   patient: Patient;
   clinics: ClinicRoom[];
+  doctorProfile?: DoctorProfile;
   onNavigate: (view: any) => void;
   onBookAppointment: () => void;
 }
@@ -13,6 +14,7 @@ interface PatientDashboardProps {
 export const PatientDashboard: React.FC<PatientDashboardProps> = ({
   patient,
   clinics,
+  doctorProfile,
   onNavigate,
   onBookAppointment
 }) => {
@@ -22,6 +24,20 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
 
   const appointmentCountdown = getAppointmentCountdown(patient.nextVisit, patient.nextVisitTime);
   const nextVisitArabic = formatDateArabic(patient.nextVisit);
+
+  const attendingDoctorName =
+    patient.attendingDoctor ||
+    doctorProfile?.name ||
+    (isRTL ? 'د. أحمد السيد' : 'Dr. Ahmed Al-Sayed');
+
+  const attendingClinicName =
+    patient.attendingClinic ||
+    doctorProfile?.assignedClinic ||
+    (isRTL ? 'العيادة 1' : 'Clinic 1');
+
+  const attendingClinicDisplay = isRTL
+    ? attendingClinicName.replace('Clinic', 'العيادة')
+    : attendingClinicName;
 
   return (
     <div className="max-w-7xl mx-auto w-full space-y-8 pb-12 transition-colors">
@@ -152,8 +168,8 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
               </p>
               <p className="text-[11px] text-blue-200 leading-relaxed">
                 {isRTL 
-                  ? `كشف واستشارة ومتابعة مع ${patient.attendingDoctor || 'Dr. Ahmed'} في ${patient.attendingClinic || 'Clinic 1'}.`
-                  : `Follow-up consultation & evaluation with ${patient.attendingDoctor || 'Dr. Ahmed'} at ${patient.attendingClinic || 'Clinic 1'}.`}
+                  ? `كشف واستشارة ومتابعة مع ${attendingDoctorName} في ${attendingClinicDisplay}.`
+                  : `Follow-up consultation & evaluation with ${attendingDoctorName} at ${attendingClinicName}.`}
               </p>
             </div>
           </div>
@@ -165,7 +181,7 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
               </div>
               <div>
                 <p className="text-xs text-blue-200">{t('clinic')}</p>
-                <p className="text-sm font-bold text-white">DentalCare Pro • {patient.attendingClinic || 'Clinic 1'}</p>
+                <p className="text-sm font-bold text-white">DentalCare Pro • {attendingClinicDisplay}</p>
               </div>
             </div>
 
@@ -220,52 +236,59 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
           <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-4 mb-5">
             <h3 className="font-headline font-bold text-lg text-slate-900 dark:text-white">{t('clinic_status')}</h3>
             <span className="text-xs text-[#10b981] font-bold flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-[#10b981] animate-ping"></span> Live Roster
+              <span className="w-2 h-2 rounded-full bg-[#10b981] animate-ping"></span> {isRTL ? "العيادات النشطة الآن" : "Live Roster"}
             </span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {clinics.map((room) => (
-              <div
-                key={room.id}
-                className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-[#f8fafc] dark:bg-slate-800/60 flex flex-col justify-between gap-3"
-              >
-                <div className="flex justify-between items-start">
-                  <span className="font-headline font-bold text-sm text-slate-900 dark:text-white">{room.name}</span>
-                  <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      room.status === 'occupied'
-                        ? 'bg-[#d1fae5] text-[#047857] dark:bg-emerald-950 dark:text-emerald-300'
-                        : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-                    }`}
-                  >
-                    {room.status === 'occupied' ? 'Open' : 'Available'}
-                  </span>
-                </div>
+            {clinics.map((room) => {
+              const isOccupied = room.status === 'occupied';
+              const roomNameDisplay = isRTL ? room.name.replace('Clinic', 'عيادة') : room.name;
 
-                <div className="flex items-center gap-3">
-                  {room.doctorAvatar ? (
-                    <img
-                      src={room.doctorAvatar}
-                      alt={room.name}
-                      className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-700"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-400">
-                      <span className="material-symbols-outlined text-[18px]">person_off</span>
+              return (
+                <div
+                  key={room.id}
+                  className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-[#f8fafc] dark:bg-slate-800/60 flex flex-col justify-between gap-3 transition-colors"
+                >
+                  <div className="flex justify-between items-start">
+                    <span className="font-headline font-bold text-sm text-slate-900 dark:text-white">
+                      {roomNameDisplay}
+                    </span>
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        isOccupied
+                          ? 'bg-[#d1fae5] text-[#047857] dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                          : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                      }`}
+                    >
+                      {isOccupied ? (isRTL ? 'في الخدمة' : 'In Session') : (isRTL ? 'متاحة' : 'Available')}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    {room.doctorAvatar ? (
+                      <img
+                        src={room.doctorAvatar}
+                        alt={room.name}
+                        className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-400 shrink-0">
+                        <span className="material-symbols-outlined text-[18px]">meeting_room</span>
+                      </div>
+                    )}
+                    <div className="overflow-hidden">
+                      <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                        {room.doctorName || (isRTL ? 'لا يوجد طبيب حالياً' : 'No doctor assigned')}
+                      </p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                        {room.doctorSpecialty || (isRTL ? 'كشف عام وطب أسنان' : 'General Dentistry')}
+                      </p>
                     </div>
-                  )}
-                  <div>
-                    <p className="text-xs font-bold text-slate-900 dark:text-white">
-                      {room.doctorName || 'No doctor assigned'}
-                    </p>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      {room.doctorSpecialty || 'General Dentistry'}
-                    </p>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>

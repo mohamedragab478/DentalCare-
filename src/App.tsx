@@ -362,20 +362,89 @@ export function App() {
     );
   };
 
+  // Clinic & Doctor Profile State Synchronization
+  const handleUpdateDoctorProfile = (updated: DoctorProfile) => {
+    setDoctorProfile(updated);
+
+    // 1. Synchronize Clinics Live Roster State
+    setClinics((prev) =>
+      prev.map((room) => {
+        const isTargetRoom = room.name.toLowerCase() === (updated.assignedClinic || '').toLowerCase();
+        const hadThisDoctor = room.doctorName === doctorProfile.name || room.doctorName === updated.name || room.doctorName === INITIAL_DOCTOR.name;
+
+        if (isTargetRoom) {
+          return {
+            ...room,
+            status: 'occupied',
+            doctorName: updated.name,
+            doctorAvatar: updated.avatar,
+            doctorSpecialty: updated.specialty
+          };
+        }
+
+        // If this room previously held this doctor and is not the new clinic, vacate it
+        if (hadThisDoctor) {
+          return {
+            ...room,
+            status: 'available',
+            doctorName: undefined,
+            doctorAvatar: undefined,
+            doctorSpecialty: undefined,
+            currentPatient: undefined
+          };
+        }
+
+        return room;
+      })
+    );
+
+    // 2. Synchronize Patients & Upcoming Appointments
+    setPatients((prev) =>
+      prev.map((p) => {
+        const isUnderThisDoctor =
+          !p.attendingDoctor ||
+          p.attendingDoctor.includes('Ahmed') ||
+          p.attendingDoctor === doctorProfile.name ||
+          p.attendingDoctor === updated.name;
+
+        if (isUnderThisDoctor) {
+          return {
+            ...p,
+            attendingDoctor: updated.name,
+            attendingClinic: updated.assignedClinic || p.attendingClinic
+          };
+        }
+        return p;
+      })
+    );
+  };
+
   // Clinic Management: Doctor restricted to one clinic, cannot kick out other doctors
   const handleAssignDoctor = (roomId: number) => {
+    const targetRoom = clinics.find((c) => c.id === roomId);
+    if (!targetRoom) return;
+
+    const newClinicName = targetRoom.name;
+
+    // Update Doctor Profile assigned clinic
+    setDoctorProfile((prev) => ({
+      ...prev,
+      assignedClinic: newClinicName
+    }));
+
+    // Update Clinics Roster
     setClinics((prev) =>
       prev.map((room) => {
         if (room.id === roomId) {
           return {
             ...room,
             status: 'occupied',
-            doctorName: INITIAL_DOCTOR.name,
-            doctorAvatar: INITIAL_DOCTOR.avatar,
-            doctorSpecialty: INITIAL_DOCTOR.specialty
+            doctorName: doctorProfile.name,
+            doctorAvatar: doctorProfile.avatar,
+            doctorSpecialty: doctorProfile.specialty
           };
         }
-        if (room.doctorName === INITIAL_DOCTOR.name) {
+        if (room.doctorName === doctorProfile.name || room.doctorName === INITIAL_DOCTOR.name) {
           return {
             ...room,
             status: 'available',
@@ -388,12 +457,33 @@ export function App() {
         return room;
       })
     );
+
+    // Update Patients assigned clinic
+    setPatients((prev) =>
+      prev.map((p) => {
+        if (!p.attendingDoctor || p.attendingDoctor.includes('Ahmed') || p.attendingDoctor === doctorProfile.name) {
+          return {
+            ...p,
+            attendingClinic: newClinicName
+          };
+        }
+        return p;
+      })
+    );
   };
 
   const handleVacateDoctor = (roomId: number) => {
+    const targetRoom = clinics.find((c) => c.id === roomId);
+    if (!targetRoom) return;
+
+    setDoctorProfile((prev) => ({
+      ...prev,
+      assignedClinic: ''
+    }));
+
     setClinics((prev) =>
       prev.map((room) => {
-        if (room.id === roomId && room.doctorName === INITIAL_DOCTOR.name) {
+        if (room.id === roomId && (room.doctorName === doctorProfile.name || room.doctorName === INITIAL_DOCTOR.name)) {
           return {
             ...room,
             status: 'available',
@@ -545,7 +635,7 @@ export function App() {
                   {currentView === 'doctor-settings' && (
                     <DoctorSettingsView
                       doctorProfile={doctorProfile}
-                      onUpdateDoctorProfile={(updated) => setDoctorProfile(updated)}
+                      onUpdateDoctorProfile={handleUpdateDoctorProfile}
                       clinics={clinics}
                     />
                   )}
@@ -562,6 +652,7 @@ export function App() {
                     <PatientDashboard
                       patient={activePatient}
                       clinics={clinics}
+                      doctorProfile={doctorProfile}
                       onNavigate={(v) => setCurrentView(v)}
                       onBookAppointment={() => {
                         setCurrentView('patient-visits');

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Patient, VisitRecord } from '../types';
+import { Patient, VisitRecord, ClinicRoom } from '../types';
 import { 
   getUpcomingWeekdays, 
   WeekdayOption, 
@@ -13,7 +13,17 @@ interface ScheduleVisitModalProps {
   isOpen: boolean;
   onClose: () => void;
   patients: Patient[];
-  onScheduleVisit: (
+  clinics?: ClinicRoom[];
+  selectedPatient?: Patient | null;
+  onSchedule?: (
+    patientId: string,
+    visitDate: string,
+    visitTime: string,
+    procedure: string,
+    clinicRoom: string,
+    notes?: string
+  ) => void;
+  onScheduleVisit?: (
     patientId: string,
     visitDate: string,
     visitTime: string,
@@ -28,13 +38,18 @@ export const ScheduleVisitModal: React.FC<ScheduleVisitModalProps> = ({
   isOpen,
   onClose,
   patients,
+  clinics = [],
+  selectedPatient,
+  onSchedule,
   onScheduleVisit,
   preselectedPatientId
 }) => {
   const { t, isRTL } = useAppThemeLanguage();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedPatientId, setSelectedPatientId] = useState(preselectedPatientId || patients[0]?.id || '');
+  const [selectedPatientId, setSelectedPatientId] = useState(
+    selectedPatient?.id || preselectedPatientId || patients[0]?.id || ''
+  );
   
   // Week offset: 0 = nearest upcoming days (this week), 1 = next week (+7 days)
   const [weekOffset, setWeekOffset] = useState<number>(0);
@@ -51,18 +66,37 @@ export const ScheduleVisitModal: React.FC<ScheduleVisitModalProps> = ({
 
   const [selectedTime, setSelectedTime] = useState('10:30 AM');
   const [procedure, setProcedure] = useState('Follow-up Consultation & Crown Evaluation');
-  const [clinicRoom, setClinicRoom] = useState('Clinic 1 (Dr. Ahmed)');
+
+  // Dynamic default clinic
+  const defaultClinicName = useMemo(() => {
+    if (clinics && clinics.length > 0) {
+      const occupied = clinics.find((c) => c.status === 'occupied' && c.doctorName);
+      if (occupied) return occupied.name;
+      return clinics[0].name;
+    }
+    return 'Clinic 1';
+  }, [clinics]);
+
+  const [clinicRoom, setClinicRoom] = useState(defaultClinicName);
   const [notes, setNotes] = useState('Check healing progress, seat final prosthesis, and oral hygiene check.');
 
   useEffect(() => {
-    if (preselectedPatientId) {
+    if (selectedPatient?.id) {
+      setSelectedPatientId(selectedPatient.id);
+    } else if (preselectedPatientId) {
       setSelectedPatientId(preselectedPatientId);
     } else if (patients.length > 0 && !selectedPatientId) {
       setSelectedPatientId(patients[0].id);
     }
-  }, [preselectedPatientId, patients]);
+  }, [selectedPatient, preselectedPatientId, patients]);
 
-  const activePatient = patients.find((p) => p.id === selectedPatientId) || patients[0];
+  useEffect(() => {
+    if (defaultClinicName && (!clinicRoom || clinicRoom === 'Clinic 1 (Dr. Ahmed)')) {
+      setClinicRoom(defaultClinicName);
+    }
+  }, [defaultClinicName]);
+
+  const activePatient = patients.find((p) => p.id === selectedPatientId) || selectedPatient || patients[0];
 
   // Convert selectedDateISO into display date
   const displayFormattedDate = useMemo(() => {
@@ -102,14 +136,17 @@ export const ScheduleVisitModal: React.FC<ScheduleVisitModalProps> = ({
     e.preventDefault();
     if (!selectedPatientId) return;
 
-    onScheduleVisit(
-      selectedPatientId,
-      displayFormattedDate,
-      selectedTime,
-      procedure,
-      clinicRoom,
-      notes
-    );
+    const scheduleCallback = onSchedule || onScheduleVisit;
+    if (scheduleCallback) {
+      scheduleCallback(
+        selectedPatientId,
+        displayFormattedDate,
+        selectedTime,
+        procedure,
+        clinicRoom,
+        notes
+      );
+    }
     onClose();
   };
 
@@ -368,10 +405,24 @@ export const ScheduleVisitModal: React.FC<ScheduleVisitModalProps> = ({
                 onChange={(e) => setClinicRoom(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-xs focus:outline-none focus:border-[#006194]"
               >
-                <option value="Clinic 1 (Dr. Ahmed)">{isRTL ? "عيادة 1 (د. أحمد)" : "Clinic 1 (Dr. Ahmed)"}</option>
-                <option value="Clinic 2 (Dr. Mohamed)">{isRTL ? "عيادة 2 (د. محمد)" : "Clinic 2 (Dr. Mohamed)"}</option>
-                <option value="Clinic 3 (Dr. Mahmoud)">{isRTL ? "عيادة 3 (د. محمود)" : "Clinic 3 (Dr. Mahmoud)"}</option>
-                <option value="Clinic 4 (General Operatory)">{isRTL ? "عيادة 4 (كشف عام وأشعة)" : "Clinic 4 (General Operatory)"}</option>
+                {clinics && clinics.length > 0 ? (
+                  clinics.map((c) => {
+                    const clinicDisplay = isRTL ? c.name.replace('Clinic', 'عيادة') : c.name;
+                    const docDisplay = c.doctorName ? ` - ${c.doctorName}` : '';
+                    return (
+                      <option key={c.id} value={c.name}>
+                        {clinicDisplay}{docDisplay}
+                      </option>
+                    );
+                  })
+                ) : (
+                  <>
+                    <option value="Clinic 1">{isRTL ? "عيادة 1" : "Clinic 1"}</option>
+                    <option value="Clinic 2">{isRTL ? "عيادة 2" : "Clinic 2"}</option>
+                    <option value="Clinic 3">{isRTL ? "عيادة 3" : "Clinic 3"}</option>
+                    <option value="Clinic 4">{isRTL ? "عيادة 4" : "Clinic 4"}</option>
+                  </>
+                )}
               </select>
             </div>
           </div>
