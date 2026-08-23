@@ -43,6 +43,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
   const { t, isRTL, lang } = useAppThemeLanguage();
 
   const [internalCompletedIds, setInternalCompletedIds] = useState<string[]>(['849202']);
+  const [isCompletedListOpen, setIsCompletedListOpen] = useState<boolean>(false);
   const [visitFilter, setVisitFilter] = useState<'All' | 'Completed' | 'Scheduled'>('All');
   const [queueClinicFilter, setQueueClinicFilter] = useState<'ActiveClinic' | 'All'>('ActiveClinic');
   const [visitToDelete, setVisitToDelete] = useState<{ patientId: string; visitId: string; patientName: string; procedure: string } | null>(null);
@@ -71,58 +72,23 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
     }
   };
 
-  // Drag & Drop handlers
-  const handleDragStart = (e: React.DragEvent, index: number) => {
-    setDraggedIndex(index);
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', index.toString());
-  };
-
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    if (dragOverIndex !== index) {
-      setDragOverIndex(index);
-    }
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
-
-  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
-    e.preventDefault();
-    if (draggedIndex === null || draggedIndex === targetIndex || !onReorderPatients) {
-      setDraggedIndex(null);
-      setDragOverIndex(null);
-      return;
-    }
-    const updated = [...patients];
-    const [draggedItem] = updated.splice(draggedIndex, 1);
-    updated.splice(targetIndex, 0, draggedItem);
-    onReorderPatients(updated);
-    setDraggedIndex(null);
-    setDragOverIndex(null);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedIndex(null);
-    setDragOverIndex(null);
-  };
-
   const defaultAvatar = 'https://lh3.googleusercontent.com/aida-public/AB6AXuAxTdB6BFCRDU6qr8N5YlyqcvvBqAlixK076_tUMWhheQjfjcVCtO0UBEY8sL1jYC9cucKVnoLoEgJlDKaSn0Qb5FJkx7v8MdhtOBjzCb8dHppP7IhiJllCOCEHHLwVXSrsa5mcVTHwz5OLt5nCjCSdaOMEjmqz6mQGAz0pZXk-7oBvgitx-9e-JaGvGW1CTaWYwwuVfl_PBgRvo3t6bQ1DMA1TZCepbWvSxDJrfFFqBCZE6ilABoY5eg';
   const currentAvatar = doctorProfile?.avatar || defaultAvatar;
   const currentDoctorName = doctorProfile?.name || 'Dr. Ahmed';
   const currentSpecialty = doctorProfile?.specialty || (isRTL ? 'استشاري التركيبات وزراعة الأسنان' : 'Prosthodontist & Implant Specialist');
   const effectiveClinic = activeClinic || doctorProfile?.assignedClinic || 'Clinic 1';
 
-  const displayedQueuePatients = useMemo(() => {
+  // Separate Queue into: Active (Waiting & In-Clinic) vs Completed List
+  const { activeQueuePatients, completedQueuePatients, allFilteredCount } = useMemo(() => {
     const filtered = patients.filter((p) => {
       if (queueClinicFilter === 'All') return true;
       return !p.attendingClinic || p.attendingClinic === effectiveClinic;
     });
 
-    const inClinicList = filtered.filter((p) => p.inClinic);
+    const activeList = filtered.filter((p) => !finishedIds.includes(p.id));
+    const completedList = filtered.filter((p) => finishedIds.includes(p.id));
+
+    const inClinicList = activeList.filter((p) => p.inClinic);
     inClinicList.sort((a, b) => {
       // 1. Explicit inClinicOrder (1, 2, 3...)
       const orderA = a.inClinicOrder;
@@ -150,10 +116,56 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
       return 0;
     });
 
-    const notInClinicList = filtered.filter((p) => !p.inClinic);
+    const notInClinicList = activeList.filter((p) => !p.inClinic);
 
-    return [...inClinicList, ...notInClinicList];
-  }, [patients, queueClinicFilter, effectiveClinic]);
+    return {
+      activeQueuePatients: [...inClinicList, ...notInClinicList],
+      completedQueuePatients: completedList,
+      allFilteredCount: filtered.length
+    };
+  }, [patients, queueClinicFilter, effectiveClinic, finishedIds]);
+
+  // Drag & Drop handlers for active queue
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index.toString());
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverIndex !== index) {
+      setDragOverIndex(index);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === targetIndex || !onReorderPatients) {
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+    const updated = [...activeQueuePatients];
+    const [draggedItem] = updated.splice(draggedIndex, 1);
+    updated.splice(targetIndex, 0, draggedItem);
+    
+    // Preserve patients from other clinics or completed list
+    const otherPatients = patients.filter((p) => !activeQueuePatients.some((ap) => ap.id === p.id));
+    onReorderPatients([...updated, ...otherPatients]);
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
 
   return (
     <div className="max-w-7xl mx-auto w-full space-y-8 animate-in fade-in duration-200 transition-colors">
@@ -204,15 +216,31 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                   <span className="material-symbols-outlined text-[#006194] dark:text-[#00a3e0]">format_list_numbered</span>
                   <span>{t('appointment_queue')}</span>
                 </h2>
-                {displayedQueuePatients.filter(p => p.inClinic).length > 0 && (
+                {activeQueuePatients.filter(p => p.inClinic).length > 0 && (
                   <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold border border-emerald-300 dark:border-emerald-800 flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                    <span>{displayedQueuePatients.filter(p => p.inClinic).length} {t('in_clinic')}</span>
+                    <span>{activeQueuePatients.filter(p => p.inClinic).length} {t('in_clinic')}</span>
                   </span>
                 )}
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold">
-                  {finishedIds.filter(id => displayedQueuePatients.some(p => p.id === id)).length}/{displayedQueuePatients.length} {t('finished')}
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/80 text-[#006194] dark:text-blue-300 font-semibold border border-blue-100 dark:border-blue-900/50">
+                  {activeQueuePatients.length} {isRTL ? 'في الانتظار' : 'Waiting'}
                 </span>
+                <button
+                  type="button"
+                  onClick={() => setIsCompletedListOpen((prev) => !prev)}
+                  className={`text-xs px-2.5 py-0.5 rounded-full font-bold transition-all cursor-pointer flex items-center gap-1 border ${
+                    completedQueuePatients.length > 0
+                      ? 'bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                      : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                  }`}
+                  title={isCompletedListOpen ? t('hide_completed_list') : t('show_completed_list')}
+                >
+                  <span className="material-symbols-outlined text-[14px]">task_alt</span>
+                  <span>{completedQueuePatients.length} {t('finished')}</span>
+                  <span className="material-symbols-outlined text-[14px]">
+                    {isCompletedListOpen ? 'expand_less' : 'expand_more'}
+                  </span>
+                </button>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-[15px] text-[#006194] dark:text-[#00a3e0]">pan_tool</span>
@@ -267,14 +295,27 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
             </button>
           </div>
 
+          {/* 1. Active Patients Queue */}
           <div className="space-y-3">
-            {displayedQueuePatients.length === 0 ? (
-              <div className="p-8 text-center bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs">
-                {isRTL ? `لا يوجد مرضى متواجدون بطابور ${effectiveClinic.replace(/Clinic\s*(\d+)/i, 'العيادة $1')} حالياً.` : `No patients in ${effectiveClinic} queue currently.`}
+            {activeQueuePatients.length === 0 ? (
+              <div className="p-8 text-center bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs space-y-2">
+                <span className="material-symbols-outlined text-3xl text-slate-400 dark:text-slate-500">task_alt</span>
+                <p className="font-semibold text-slate-700 dark:text-slate-300">
+                  {isRTL ? `لا يوجد مرضى في انتظار الكشف بطابور ${effectiveClinic.replace(/Clinic\s*(\d+)/i, 'العيادة $1')} حالياً.` : `No waiting patients in ${effectiveClinic} queue currently.`}
+                </p>
+                {completedQueuePatients.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setIsCompletedListOpen(true)}
+                    className="inline-flex items-center gap-1 text-[#006194] dark:text-[#00a3e0] hover:underline font-bold text-xs cursor-pointer mt-1"
+                  >
+                    <span>{isRTL ? `عرض المرضى المكتملين اليوم (${completedQueuePatients.length})` : `View today's completed patients (${completedQueuePatients.length})`}</span>
+                    <span className="material-symbols-outlined text-[14px]">arrow_downward</span>
+                  </button>
+                )}
               </div>
             ) : (
-              displayedQueuePatients.map((p, idx) => {
-                const isFinished = finishedIds.includes(p.id);
+              activeQueuePatients.map((p, idx) => {
                 const countdown = getAppointmentCountdown(p.nextVisit, p.nextVisitTime);
                 const isBeingDragged = draggedIndex === idx;
                 const isTargetDrop = dragOverIndex === idx && draggedIndex !== idx;
@@ -293,8 +334,6 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                       ? 'opacity-40 scale-[0.98] border-dashed border-[#006194] bg-blue-50/50 dark:bg-blue-950/40'
                       : isTargetDrop
                       ? 'border-[#006194] ring-2 ring-[#006194]/40 bg-blue-50/80 dark:bg-blue-950/60'
-                      : isFinished
-                      ? 'border-emerald-200 dark:border-emerald-900 bg-emerald-50/40 dark:bg-emerald-950/20 opacity-90'
                       : p.inClinic
                       ? 'border-emerald-300 dark:border-emerald-800/80 bg-emerald-50/20 dark:bg-emerald-950/20 shadow-xs'
                       : 'border-slate-200 dark:border-slate-800 bg-[#f8fafc] dark:bg-slate-800/60 hover:bg-white dark:hover:bg-slate-800 hover:border-[#006194] dark:hover:border-slate-700'
@@ -320,9 +359,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                         <img src={p.avatar} alt={p.name} className="w-11 h-11 rounded-2xl object-cover border border-slate-200 dark:border-slate-700 shadow-2xs" />
                       ) : (
                         <div className={`w-11 h-11 rounded-2xl font-bold text-xs flex items-center justify-center shadow-2xs ${
-                          isFinished 
-                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' 
-                            : p.inClinic
+                          p.inClinic
                             ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200'
                             : 'bg-[#dae2fd] text-[#006194] dark:bg-blue-950 dark:text-blue-300'
                         }`}>
@@ -342,7 +379,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                     {/* Details: Name, Badges, Procedure, Next Visit Date */}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`font-headline font-bold text-sm sm:text-base ${isFinished ? 'text-slate-600 dark:text-slate-400 line-through' : 'text-slate-900 dark:text-white'}`}>
+                        <span className="font-headline font-bold text-sm sm:text-base text-slate-900 dark:text-white">
                           {p.name}
                         </span>
                         <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">#{p.id}</span>
@@ -352,13 +389,6 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                             <span>{t('in_clinic')}</span>
                             {p.inClinicTime && <span className="text-[10px] font-normal opacity-80">({p.inClinicTime})</span>}
-                          </span>
-                        )}
-
-                        {isFinished && (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                            <span className="material-symbols-outlined text-[12px]">done_all</span>
-                            <span>{t('finished')}</span>
                           </span>
                         )}
                       </div>
@@ -378,7 +408,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                     </div>
                   </div>
 
-                  {/* Actions Toolbar: Perfectly organized and consistent across all cards */}
+                  {/* Actions Toolbar */}
                   <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 self-start xl:self-center shrink-0 w-full xl:w-auto pt-2 xl:pt-0 border-t xl:border-t-0 border-slate-100 dark:border-slate-800">
                     {/* 1. In Clinic Toggle Button */}
                     <button
@@ -410,7 +440,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                       </button>
                     )}
 
-                    {/* 3. Open Chart Button (Consistent Primary Button) */}
+                    {/* 3. Open Chart Button */}
                     <button
                       type="button"
                       onClick={() => onSelectPatient(p)}
@@ -421,26 +451,136 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                       <span>{t('open_chart')}</span>
                     </button>
 
-                    {/* 4. Mark as Finished Option */}
+                    {/* 4. Mark as Finished (Moves to Completed List) */}
                     <button
                       type="button"
                       onClick={(e) => handleToggleFinished(p.id, e)}
-                      className={`flex-1 sm:flex-none px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs active:scale-95 shrink-0 ${
-                        isFinished
-                          ? 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300'
-                          : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                      }`}
-                      title={isFinished ? t('mark_pending') : t('mark_patient_done')}
+                      className="flex-1 sm:flex-none px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs active:scale-95 shrink-0"
+                      title={t('mark_patient_done')}
                     >
-                      <span className="material-symbols-outlined text-[16px]">
-                        {isFinished ? 'undo' : 'check_circle'}
-                      </span>
-                      <span>{isFinished ? t('undo') : t('mark_patient_done')}</span>
+                      <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                      <span>{t('mark_patient_done')}</span>
                     </button>
                   </div>
                 </div>
               );
             })
+            )}
+          </div>
+
+          {/* 2. Collapsible Completed Patients List */}
+          <div className="mt-6 pt-5 border-t border-slate-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setIsCompletedListOpen((prev) => !prev)}
+              className="w-full flex items-center justify-between p-3.5 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/60 dark:hover:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 text-left rtl:text-right transition-colors cursor-pointer group"
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-xl">
+                  task_alt
+                </span>
+                <span className="font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-200 group-hover:text-[#006194] dark:group-hover:text-[#00a3e0] transition-colors">
+                  {t('completed_patients_title')}
+                </span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold border border-emerald-200 dark:border-emerald-800">
+                  {completedQueuePatients.length}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-semibold">
+                <span>{isCompletedListOpen ? t('hide_completed_list') : t('show_completed_list')}</span>
+                <span className="material-symbols-outlined text-[18px] transition-transform duration-200">
+                  {isCompletedListOpen ? 'expand_less' : 'expand_more'}
+                </span>
+              </div>
+            </button>
+
+            {/* Expanded Completed List */}
+            {isCompletedListOpen && (
+              <div className="mt-3 space-y-2.5 animate-in fade-in slide-in-from-top-2 duration-150">
+                {completedQueuePatients.length === 0 ? (
+                  <div className="p-6 text-center bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs">
+                    {t('completed_patients_empty')}
+                  </div>
+                ) : (
+                  completedQueuePatients.map((p) => {
+                    return (
+                      <div
+                        key={`completed-${p.id}`}
+                        className="p-3.5 rounded-2xl border border-emerald-200 dark:border-emerald-900/80 bg-emerald-50/40 dark:bg-emerald-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          {/* Completed Avatar with Check Badge */}
+                          <div className="relative shrink-0">
+                            {p.avatar ? (
+                              <img src={p.avatar} alt={p.name} className="w-10 h-10 rounded-xl object-cover border border-emerald-200 dark:border-emerald-800 opacity-90" />
+                            ) : (
+                              <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 font-bold text-xs flex items-center justify-center">
+                                {p.initials}
+                              </div>
+                            )}
+                            <span className="absolute -bottom-1 -right-1 rtl:-right-auto rtl:-left-1 w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px]">
+                              ✓
+                            </span>
+                          </div>
+
+                          {/* Details */}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-200">
+                                {p.name}
+                              </span>
+                              <span className="text-[10px] text-slate-400 font-mono">#{p.id}</span>
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                <span className="material-symbols-outlined text-[12px]">done_all</span>
+                                <span>{t('completed_badge')}</span>
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                              {p.treatmentType || (isRTL ? 'كشف دوري' : 'Routine Checkup')} • {isRTL ? `العمر ${p.age} سنة` : `Age ${p.age}`}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Completed Actions: Open Chart + Schedule + Return to Queue (Undo) */}
+                        <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                          {onScheduleVisit && (
+                            <button
+                              type="button"
+                              onClick={() => onScheduleVisit(p)}
+                              className="px-2.5 py-1.5 bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-[#006194] dark:text-[#00a3e0] rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
+                              title={t('schedule_visit')}
+                            >
+                              <span className="material-symbols-outlined text-[14px]">calendar_month</span>
+                              <span className="hidden sm:inline">{t('schedule_visit')}</span>
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => onSelectPatient(p)}
+                            className="px-2.5 py-1.5 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
+                            title={t('open_patient_chart')}
+                          >
+                            <span className="material-symbols-outlined text-[14px] text-[#006194] dark:text-[#00a3e0]">folder_shared</span>
+                            <span>{t('open_chart')}</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => handleToggleFinished(p.id, e)}
+                            className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-100 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95 shadow-2xs"
+                            title={t('return_to_queue')}
+                          >
+                            <span className="material-symbols-outlined text-[15px]">undo</span>
+                            <span>{t('return_to_queue')}</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             )}
           </div>
         </div>

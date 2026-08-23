@@ -192,7 +192,7 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({
             title={lang === 'ar' ? 'Switch to English' : 'التحويل إلى اللغة العربية'}
           >
             <span className="material-symbols-outlined text-[17px] text-[#006194] dark:text-[#00a3e0]">language</span>
-            <span>{lang === 'ar' ? 'English' : 'العربية'}</span>
+            <span>{lang === 'ar' ? 'E' : 'ع'}</span>
           </button>
 
           {/* Theme Switcher */}
@@ -213,32 +213,6 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({
           </div>
         </div>
       </header>
-
-      {/* Quick Demo Access Bar */}
-      <div className="bg-blue-50 dark:bg-blue-950/80 border-b border-blue-200 dark:border-blue-800/40 text-blue-900 dark:text-blue-200 px-6 py-2.5 text-xs flex flex-wrap items-center justify-between gap-3 z-10">
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span className="font-semibold text-slate-900 dark:text-white">{t('direct_demo_access')}</span>
-          <span className="text-slate-600 dark:text-slate-300">{t('demo_description')}</span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onDoctorLoginSuccess}
-            className="bg-[#006194] hover:bg-[#004b73] text-white px-3.5 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
-          >
-            <span className="material-symbols-outlined text-[16px]">stethoscope</span>
-            <span>{t('enter_as_doctor')}</span>
-          </button>
-          <button
-            onClick={() => onPatientLoginSuccess('849201')}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
-          >
-            <span className="material-symbols-outlined text-[16px]">account_circle</span>
-            <span>{t('enter_as_patient')}</span>
-          </button>
-        </div>
-      </div>
 
       {/* Main Content Area */}
       <div className="flex-1 max-w-7xl mx-auto w-full p-4 md:p-8 space-y-8">

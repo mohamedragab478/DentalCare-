@@ -131,7 +131,7 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
               id="header-lang-toggle"
             >
               <span className="material-symbols-outlined text-[16px] text-[#006194] dark:text-[#00a3e0]">language</span>
-              <span className="hidden sm:inline">{lang === 'ar' ? 'EN' : 'عربي'}</span>
+              <span>{lang === 'ar' ? 'E' : 'ع'}</span>
             </button>
 
             {/* Theme Toggle */}

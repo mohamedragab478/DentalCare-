@@ -176,7 +176,7 @@ export const TopNav: React.FC<TopNavProps> = ({
           id="lang-toggle-button"
         >
           <span className="material-symbols-outlined text-[17px] text-[#006194] dark:text-[#00a3e0]">language</span>
-          <span>{lang === 'ar' ? 'English' : 'العربية'}</span>
+          <span>{lang === 'ar' ? 'E' : 'ع'}</span>
         </button>
 
         {/* Dark / Light Mode Toggle Button */}

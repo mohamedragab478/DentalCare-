@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Patient, DoctorProfile } from '../types';
 import { DOCTORS_LIST } from '../data/initialData';
 import { useAppThemeLanguage } from '../context/ThemeLanguageContext';
+import { LoginLoadingOverlay } from './LoginLoadingOverlay';
 
 // Standard Doctor Account Credentials & Passwords
 export const DOCTOR_CREDENTIALS: Record<string, { pass: string; docId: string }> = {
@@ -34,6 +35,40 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Loading animation state
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(0);
+  const [loadingProgress, setLoadingProgress] = useState(15);
+  const [loadingUserName, setLoadingUserName] = useState<string>('');
+  const [loadingRole, setLoadingRole] = useState<'doctor' | 'patient'>('doctor');
+
+  // Trigger smooth stepped loading transition
+  const executeLoginTransition = (
+    role: 'doctor' | 'patient',
+    name: string,
+    onFinish: () => void
+  ) => {
+    setIsLoading(true);
+    setLoadingRole(role);
+    setLoadingUserName(name);
+    setLoadingStep(0);
+    setLoadingProgress(25);
+
+    setTimeout(() => {
+      setLoadingStep(1);
+      setLoadingProgress(70);
+    }, 280);
+
+    setTimeout(() => {
+      setLoadingStep(2);
+      setLoadingProgress(100);
+    }, 580);
+
+    setTimeout(() => {
+      onFinish();
+    }, 850);
+  };
 
   // Normalize input string for matching
   const cleanInput = identifier.trim().toLowerCase();
@@ -97,13 +132,14 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return;
     setErrorMsg(null);
 
     if (!cleanInput) {
       setErrorMsg(
         isRTL
-          ? 'يرجى إدخال رقم الهاتف للمتابعة.'
-          : 'Please enter your phone number to continue.'
+          ? 'يرجى إدخال اسم المستخدم أو رقم الهاتف للمتابعة.'
+          : 'Please enter your username or phone number to continue.'
       );
       return;
     }
@@ -125,17 +161,22 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
       const authRes = await supabaseService.authenticateUser(cleanInput, trimmedPassword);
       if (authRes.success && authRes.refId !== undefined) {
         if (authRes.role === 1) {
-          onDoctorLoginSuccess(authRes.refId, selectedClinic);
+          const doc = doctors.find((d) => d.id === authRes.refId);
+          executeLoginTransition('doctor', doc ? doc.name : 'Doctor', () => {
+            onDoctorLoginSuccess(authRes.refId, selectedClinic);
+          });
           return;
         } else {
-          onPatientLoginSuccess(authRes.refId);
+          const pat = patients.find((p) => p.id === authRes.refId);
+          executeLoginTransition('patient', pat ? pat.name : 'Patient', () => {
+            onPatientLoginSuccess(authRes.refId);
+          });
           return;
         }
       }
     } catch (cloudErr) {
       console.info('Cloud auth check fallback to local check:', cloudErr);
     }
-
 
     // 1. Check if input matches any Doctor (by phone number, ID, or name)
     const matchedDoctor = doctors.find((d) => {
@@ -173,7 +214,9 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
         return;
       }
 
-      onDoctorLoginSuccess(matchedDoctor.id, selectedClinic);
+      executeLoginTransition('doctor', matchedDoctor.name, () => {
+        onDoctorLoginSuccess(matchedDoctor.id, selectedClinic);
+      });
       return;
     }
 
@@ -184,7 +227,7 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
         p.name.toLowerCase() === cleanInput ||
         (digitsOnly.length >= 4 && p.phone.replace(/\D/g, '').includes(digitsOnly)) ||
         p.id === cleanInput
-    );
+      );
 
     if (matchedPatient) {
       // STRICT PASSWORD CHECK FOR PATIENTS (Password is the Patient's ID or Phone)
@@ -204,7 +247,9 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
         return;
       }
 
-      onPatientLoginSuccess(matchedPatient.id);
+      executeLoginTransition('patient', matchedPatient.name, () => {
+        onPatientLoginSuccess(matchedPatient.id);
+      });
       return;
     }
 
@@ -225,7 +270,9 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
         return;
       }
 
-      onPatientLoginSuccess(anyPatientById.id);
+      executeLoginTransition('patient', anyPatientById.name, () => {
+        onPatientLoginSuccess(anyPatientById.id);
+      });
       return;
     }
 
@@ -238,112 +285,134 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
   };
 
   return (
-    <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200 p-7 sm:p-9 animate-in fade-in zoom-in-95 duration-200 text-slate-900">
-      {/* Header */}
-      <div className="text-center mb-6">
-        <div className="w-14 h-14 bg-[#006194] text-white rounded-2xl mx-auto flex items-center justify-center shadow-lg shadow-[#006194]/20 mb-3">
-          <span className="material-symbols-outlined text-3xl">dentistry</span>
-        </div>
-        <h1 className="font-headline font-bold text-2xl text-slate-900">
-          {t('sign_in_title')}
-        </h1>
-        <p className="text-xs text-slate-500 mt-1 font-medium">
-          {t('sign_in_subtitle')}
-        </p>
-      </div>
-
-      {/* Error notification */}
-      {errorMsg && (
-        <div className="mb-4 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2 animate-in fade-in">
-          <span className="material-symbols-outlined text-[18px] text-rose-600 shrink-0 mt-0.5">error</span>
-          <span className="font-medium leading-relaxed">{errorMsg}</span>
-        </div>
+    <>
+      {isLoading && (
+        <LoginLoadingOverlay
+          userName={loadingUserName}
+          userRole={loadingRole}
+          stepIndex={loadingStep}
+          progressPercent={loadingProgress}
+        />
       )}
 
-      {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-            {t('login_identifier_label')}
-          </label>
-          <div className="relative">
-            <span className={`material-symbols-outlined absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 text-slate-400 text-[20px]`}>
-              {detectedRole === 'doctor' ? 'badge' : detectedRole === 'patient' ? 'account_circle' : 'person'}
-            </span>
-            <input
-              type="text"
-              value={identifier}
-              onChange={(e) => {
-                setIdentifier(e.target.value);
-                setErrorMsg(null);
-              }}
-              required
-              className={`w-full ${isRTL ? 'pr-11 pl-4' : 'pl-11 pr-4'} py-3 rounded-xl border border-slate-200 bg-[#f8fafc] text-slate-900 text-sm focus:outline-none focus:border-[#006194] focus:ring-2 focus:ring-[#006194]/20 transition-all font-medium placeholder:text-slate-400`}
-              placeholder={t('login_identifier_placeholder')}
-            />
+      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200 p-7 sm:p-9 animate-in fade-in zoom-in-95 duration-200 text-slate-900">
+        {/* Header */}
+        <div className="text-center mb-6">
+          <div className="w-14 h-14 bg-[#006194] text-white rounded-2xl mx-auto flex items-center justify-center shadow-lg shadow-[#006194]/20 mb-3">
+            <span className="material-symbols-outlined text-3xl">dentistry</span>
           </div>
+          <h1 className="font-headline font-bold text-2xl text-slate-900">
+            {t('sign_in_title')}
+          </h1>
+          <p className="text-xs text-slate-500 mt-1 font-medium">
+            {t('sign_in_subtitle')}
+          </p>
         </div>
 
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-            {t('password_label')}
-          </label>
-          <div className="relative">
-            <span className={`material-symbols-outlined absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 text-slate-400 text-[20px]`}>
-              lock
-            </span>
-            <input
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                setErrorMsg(null);
-              }}
-              required
-              className={`w-full ${isRTL ? 'pr-11 pl-11' : 'pl-11 pr-11'} py-3 rounded-xl border border-slate-200 bg-[#f8fafc] text-slate-900 text-sm focus:outline-none focus:border-[#006194] focus:ring-2 focus:ring-[#006194]/20 transition-all font-medium placeholder:text-slate-400`}
-              placeholder={t('password_placeholder')}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className={`absolute ${isRTL ? 'left-3.5' : 'right-3.5'} top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer`}
-            >
-              <span className="material-symbols-outlined text-[20px]">
-                {showPassword ? 'visibility_off' : 'visibility'}
+        {/* Error notification */}
+        {errorMsg && (
+          <div className="mb-4 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2 animate-in fade-in">
+            <span className="material-symbols-outlined text-[18px] text-rose-600 shrink-0 mt-0.5">error</span>
+            <span className="font-medium leading-relaxed">{errorMsg}</span>
+          </div>
+        )}
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+              {t('login_identifier_label')}
+            </label>
+            <div className="relative">
+              <span className={`material-symbols-outlined absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 text-slate-400 text-[20px]`}>
+                {detectedRole === 'doctor' ? 'badge' : detectedRole === 'patient' ? 'account_circle' : 'person'}
               </span>
-            </button>
+              <input
+                type="text"
+                value={identifier}
+                onChange={(e) => {
+                  setIdentifier(e.target.value);
+                  setErrorMsg(null);
+                }}
+                disabled={isLoading}
+                required
+                className={`w-full ${isRTL ? 'pr-11 pl-4' : 'pl-11 pr-4'} py-3 rounded-xl border border-slate-200 bg-[#f8fafc] text-slate-900 text-sm focus:outline-none focus:border-[#006194] focus:ring-2 focus:ring-[#006194]/20 transition-all font-medium placeholder:text-slate-400 disabled:opacity-60`}
+                placeholder={t('login_identifier_placeholder')}
+              />
+            </div>
           </div>
-        </div>
 
-        <div className="flex items-center justify-between text-xs pt-1">
-          <label className="flex items-center gap-2 text-slate-600 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={rememberMe}
-              onChange={(e) => setRememberMe(e.target.checked)}
-              className="rounded text-[#006194] focus:ring-[#006194]"
-            />
-            <span>{t('remember_me')}</span>
-          </label>
-          <span className="text-slate-400 text-[11px]">
-            {isRTL ? "دخول آمن ومشفر" : "Encrypted SSL"}
-          </span>
-        </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+              {t('password_label')}
+            </label>
+            <div className="relative">
+              <span className={`material-symbols-outlined absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 text-slate-400 text-[20px]`}>
+                lock
+              </span>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setErrorMsg(null);
+                }}
+                disabled={isLoading}
+                required
+                className={`w-full ${isRTL ? 'pr-11 pl-11' : 'pl-11 pr-11'} py-3 rounded-xl border border-slate-200 bg-[#f8fafc] text-slate-900 text-sm focus:outline-none focus:border-[#006194] focus:ring-2 focus:ring-[#006194]/20 transition-all font-medium placeholder:text-slate-400 disabled:opacity-60`}
+                placeholder={t('password_placeholder')}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className={`absolute ${isRTL ? 'left-3.5' : 'right-3.5'} top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer`}
+              >
+                <span className="material-symbols-outlined text-[20px]">
+                  {showPassword ? 'visibility_off' : 'visibility'}
+                </span>
+              </button>
+            </div>
+          </div>
 
-        <button
-          type="submit"
-          className="w-full mt-5 bg-[#006194] hover:bg-[#004b73] text-white py-3.5 rounded-xl font-bold text-sm transition-all shadow-md active:scale-98 cursor-pointer flex items-center justify-center gap-2"
-          id="unified-login-submit-btn"
-        >
-          <span>
-            {isRTL ? "دخول" : "Log In"}
-          </span>
+          <div className="flex items-center justify-between text-xs pt-1">
+            <label className="flex items-center gap-2 text-slate-600 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="rounded text-[#006194] focus:ring-[#006194]"
+              />
+              <span>{t('remember_me')}</span>
+            </label>
+            <span className="text-slate-400 text-[11px]">
+              {isRTL ? "دخول آمن ومشفر" : "Encrypted SSL"}
+            </span>
+          </div>
 
-          <span className="material-symbols-outlined text-[18px]">
-            {isRTL ? 'arrow_back' : 'arrow_forward'}
-          </span>
-        </button>
-      </form>
-    </div>
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full mt-5 bg-[#006194] hover:bg-[#004b73] text-white py-3.5 rounded-xl font-bold text-sm transition-all shadow-md active:scale-98 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-75"
+            id="unified-login-submit-btn"
+          >
+            {isLoading ? (
+              <>
+                <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
+                <span>{isRTL ? 'جاري التحقق والدخول...' : 'Signing in...'}</span>
+              </>
+            ) : (
+              <>
+                <span>
+                  {isRTL ? "دخول" : "Log In"}
+                </span>
+                <span className="material-symbols-outlined text-[18px]">
+                  {isRTL ? 'arrow_back' : 'arrow_forward'}
+                </span>
+              </>
+            )}
+          </button>
+        </form>
+      </div>
+    </>
   );
 };
