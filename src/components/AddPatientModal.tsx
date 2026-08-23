@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Patient } from '../types';
 import { useAppThemeLanguage } from '../context/ThemeLanguageContext';
+import { isValidEgyptianPhone, normalizeEgyptianPhone } from '../utils/phoneValidation';
 
 interface AddPatientModalProps {
   isOpen: boolean;
@@ -37,10 +38,11 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
   const [avatar, setAvatar] = useState('');
   const [gender, setGender] = useState<'Male' | 'Female'>('Male');
   const [age, setAge] = useState<string>('30');
-  const [phone, setPhone] = useState('+1 (555) 019-2830');
+  const [phone, setPhone] = useState('01012345678');
   const [treatmentType, setTreatmentType] = useState('Cleaning');
   const [medicalNotes, setMedicalNotes] = useState('');
   const [previewNumericId, setPreviewNumericId] = useState('');
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [createdCredentials, setCreatedCredentials] = useState<{ id: string; name: string; phone: string } | null>(null);
   const [isCopied, setIsCopied] = useState(false);
 
@@ -48,12 +50,13 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
 
   useEffect(() => {
     setTargetClinic(activeClinic || 'Clinic 1');
+    setPhoneError(null);
     if (initialPatient) {
       setName(initialPatient.name || '');
       setAvatar(initialPatient.avatar || '');
       setGender(initialPatient.gender || 'Male');
       setAge(initialPatient.age?.toString() || '30');
-      setPhone(initialPatient.phone || '');
+      setPhone(normalizeEgyptianPhone(initialPatient.phone) || initialPatient.phone || '');
       setTreatmentType(initialPatient.treatmentType || 'Cleaning');
       setTargetClinic(initialPatient.attendingClinic || activeClinic || 'Clinic 1');
       setMedicalNotes(initialPatient.medicalNotes || '');
@@ -64,7 +67,7 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
       setAvatar('');
       setGender('Male');
       setAge('30');
-      setPhone('+1 (555) ');
+      setPhone('');
       setTreatmentType('Cleaning');
       setMedicalNotes('');
       setPreviewNumericId(Math.floor(100000 + Math.random() * 900000).toString());
@@ -130,7 +133,18 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
 
   const handleSubmitNew = (e: React.FormEvent) => {
     e.preventDefault();
+    setPhoneError(null);
     if (!name.trim()) return;
+
+    const normalizedPhone = normalizeEgyptianPhone(phone);
+    if (!isValidEgyptianPhone(normalizedPhone)) {
+      setPhoneError(
+        isRTL
+          ? 'رقم الهاتف غير صالح. يجب أن يتكون من 11 خانة ويبدأ بأحد الأرقام: 010 أو 011 أو 012 أو 015'
+          : 'Invalid phone number. Must be exactly 11 digits and start with 010, 011, 012, or 015.'
+      );
+      return;
+    }
 
     const initials = name
       .split(' ')
@@ -150,7 +164,7 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
         initials: initials || initialPatient.initials,
         age: parseInt(age, 10) || initialPatient.age,
         gender,
-        phone,
+        phone: normalizedPhone,
         treatmentType,
         attendingClinic: targetClinic,
         medicalNotes
@@ -167,7 +181,7 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
         initials: initials || 'PT',
         age: parseInt(age, 10) || 30,
         gender,
-        phone,
+        phone: normalizedPhone,
         lastVisit: today,
         treatmentType,
         attendingClinic: targetClinic,
@@ -594,17 +608,31 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                {t('phone')} *
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  {t('phone')} *
+                </label>
+                <span className="text-[11px] text-slate-400 font-mono">11 digits (010, 011, 012, 015)</span>
+              </div>
               <input
-                type="text"
+                type="tel"
                 required
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder={isRTL ? "01012345678" : "+1 (555) 019-2830"}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-xs font-mono focus:outline-none focus:border-[#006194]"
+                maxLength={14}
+                onChange={(e) => {
+                  setPhone(e.target.value);
+                  setPhoneError(null);
+                }}
+                placeholder="01012345678"
+                className={`w-full px-3.5 py-2.5 rounded-xl border text-slate-900 text-xs font-mono focus:outline-none ${
+                  phoneError
+                    ? 'border-rose-300 bg-rose-50/50 focus:border-rose-500'
+                    : 'border-slate-200 bg-slate-50 focus:border-[#006194]'
+                }`}
               />
+              {phoneError && (
+                <p className="mt-1 text-[11px] text-rose-600 font-medium">{phoneError}</p>
+              )}
             </div>
 
             <div>

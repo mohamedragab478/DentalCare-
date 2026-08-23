@@ -320,9 +320,42 @@ export function App() {
   };
 
   const handleTogglePatientCompleted = (patientId: string) => {
-    setCompletedQueueIds((prev) =>
-      prev.includes(patientId) ? prev.filter((id) => id !== patientId) : [...prev, patientId]
-    );
+    setCompletedQueueIds((prev) => {
+      const willBeCompleted = !prev.includes(patientId);
+      const nextCompleted = willBeCompleted
+        ? [...prev, patientId]
+        : prev.filter((id) => id !== patientId);
+
+      // When marked finished, automatically set inClinic to false as requested by user
+      if (willBeCompleted) {
+        setPatients((currentPatients) => {
+          const target = currentPatients.find((p) => p.id === patientId);
+          if (!target) return currentPatients;
+
+          const updatedPatient: Patient = {
+            ...target,
+            inClinic: false,
+            inClinicTime: undefined,
+            inClinicTimestamp: undefined,
+            inClinicOrder: undefined
+          };
+
+          // Sync individual patient update to Supabase
+          supabaseService.saveSinglePatientToCloud(updatedPatient);
+
+          const others = currentPatients.filter((p) => p.id !== patientId);
+          const inClinicGroup = others.filter((p) => p.inClinic);
+          const notInClinicGroup = others.filter((p) => !p.inClinic);
+
+          return [...inClinicGroup, ...notInClinicGroup, updatedPatient];
+        });
+      }
+
+      // Sync completed ids to cloud
+      supabaseService.syncCompletedQueueToCloud(nextCompleted);
+
+      return nextCompleted;
+    });
   };
 
   const handleToggleInClinic = (patientId: string) => {

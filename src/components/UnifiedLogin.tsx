@@ -43,13 +43,15 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
   const detectedRole = useMemo<'doctor' | 'patient' | 'unknown'>(() => {
     if (!cleanInput) return 'unknown';
 
-    // Doctor patterns
+    // Doctor patterns (including phone number match)
     const doctorMatch = doctors.find((d) => {
       const docDigits = d.id.replace(/\D/g, '');
+      const docPhoneDigits = (d.phone || '').replace(/\D/g, '');
       return (
         d.id.toLowerCase() === cleanInput ||
         d.email.toLowerCase() === cleanInput ||
         d.name.toLowerCase().includes(cleanInput) ||
+        (digitsOnly.length >= 8 && docPhoneDigits.includes(digitsOnly)) ||
         (digitsOnly.length > 0 && docDigits.endsWith(digitsOnly)) ||
         cleanInput === `doc-${docDigits}` ||
         cleanInput === `doc-10${docDigits}` ||
@@ -85,7 +87,7 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
 
     if (patientMatch) return 'patient';
 
-    // If digits or starts with phone digits, likely patient
+    // If digits or starts with phone digits, could be either
     if (/^\d{5,12}$/.test(digitsOnly)) {
       return 'patient';
     }
@@ -100,8 +102,8 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
     if (!cleanInput) {
       setErrorMsg(
         isRTL
-          ? 'يرجى إدخال اسم المستخدم أو كود الطبيب أو رقم ملف المريض.'
-          : 'Please enter your Doctor ID, Email, Patient File #, or Phone Number.'
+          ? 'يرجى إدخال رقم الهاتف للمتابعة.'
+          : 'Please enter your phone number to continue.'
       );
       return;
     }
@@ -135,10 +137,13 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
     }
 
 
-    // 1. Check if input matches any Doctor
+    // 1. Check if input matches any Doctor (by phone number, ID, or name)
     const matchedDoctor = doctors.find((d) => {
       const docDigits = d.id.replace(/\D/g, '');
+      const docPhoneDigits = (d.phone || '').replace(/\D/g, '');
       return (
+        (digitsOnly.length >= 8 && docPhoneDigits.includes(digitsOnly)) ||
+        d.phone.toLowerCase() === cleanInput ||
         d.id.toLowerCase() === cleanInput ||
         d.email.toLowerCase() === cleanInput ||
         d.name.toLowerCase().includes(cleanInput) ||

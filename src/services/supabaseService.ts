@@ -295,17 +295,40 @@ export const supabaseService = {
         await supabase.from('doctors').upsert(fallbackRows, { onConflict: 'id' });
       }
 
-      // Also sync doctor credentials to app_users
+      // Also sync doctor credentials to app_users (support phone login, doc code, and id)
       for (const d of doctors) {
         const docDigits = d.id.replace(/\D/g, '');
+        const cleanPhone = d.phone.replace(/\D/g, '');
+        const rawPhone = d.phone.trim();
         const code = `DOC-10${docDigits || '1'}`;
-        await supabase.from('app_users').upsert({
-          id: `usr-${d.id}`,
-          username: code,
-          password: d.password || 'clinicPass2026',
-          role: 1,
-          ref_id: d.id
-        }, { onConflict: 'username' });
+        const userEntries: any[] = [
+          {
+            id: `usr-${d.id}`,
+            username: code,
+            password: d.password || 'clinicPass2026',
+            role: 1,
+            ref_id: d.id
+          }
+        ];
+        if (cleanPhone) {
+          userEntries.push({
+            id: `usr-doc-ph-${d.id}-clean`,
+            username: cleanPhone,
+            password: d.password || 'clinicPass2026',
+            role: 1,
+            ref_id: d.id
+          });
+        }
+        if (rawPhone && rawPhone !== cleanPhone) {
+          userEntries.push({
+            id: `usr-doc-ph-${d.id}-raw`,
+            username: rawPhone,
+            password: d.password || 'clinicPass2026',
+            role: 1,
+            ref_id: d.id
+          });
+        }
+        await supabase.from('app_users').upsert(userEntries, { onConflict: 'id' });
       }
 
       return true;
@@ -411,6 +434,31 @@ export const supabaseService = {
             role: 1,
             ref_id: doctorId
           }, { onConflict: 'username' });
+        }
+
+        // Also update phone entries if doctor phone is known
+        const { data: docRecord } = await supabase.from('doctors').select('phone').eq('id', doctorId).single();
+        if (docRecord?.phone) {
+          const cleanPhone = docRecord.phone.replace(/\D/g, '');
+          const rawPhone = docRecord.phone.trim();
+          if (cleanPhone) {
+            await supabase.from('app_users').upsert({
+              id: `usr-doc-ph-${doctorId}-clean`,
+              username: cleanPhone,
+              password: cleanNew,
+              role: 1,
+              ref_id: doctorId
+            }, { onConflict: 'id' });
+          }
+          if (rawPhone && rawPhone !== cleanPhone) {
+            await supabase.from('app_users').upsert({
+              id: `usr-doc-ph-${doctorId}-raw`,
+              username: rawPhone,
+              password: cleanNew,
+              role: 1,
+              ref_id: doctorId
+            }, { onConflict: 'id' });
+          }
         }
       } catch (userErr) {
         console.warn('Note: app_users update:', userErr);

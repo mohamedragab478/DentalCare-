@@ -40,7 +40,10 @@ export const DoctorLogin: React.FC<DoctorLoginProps> = ({
 
     const matchedDoctor = DOCTORS_LIST.find((d) => {
       const docDigits = d.id.replace(/\D/g, '');
+      const docPhoneDigits = (d.phone || '').replace(/\D/g, '');
       return (
+        (digitsOnly.length >= 8 && docPhoneDigits.includes(digitsOnly)) ||
+        d.phone.toLowerCase() === cleanInput ||
         d.id.toLowerCase() === cleanInput ||
         d.email.toLowerCase() === cleanInput ||
         d.name.toLowerCase().includes(cleanInput) ||
@@ -58,7 +61,7 @@ export const DoctorLogin: React.FC<DoctorLoginProps> = ({
     });
 
     if (!matchedDoctor) {
-      setErrorMsg('Invalid Doctor ID or Clinical Code.');
+      setErrorMsg('Invalid Doctor Phone Number or Doctor ID.');
       return;
     }
 
@@ -94,11 +97,11 @@ export const DoctorLogin: React.FC<DoctorLoginProps> = ({
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-            Clinical ID / Email
+            Phone Number
           </label>
           <div className="relative">
             <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">
-              badge
+              call
             </span>
             <input
               type="text"
@@ -109,7 +112,7 @@ export const DoctorLogin: React.FC<DoctorLoginProps> = ({
               }}
               required
               className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 bg-[#f8fafc] text-slate-900 text-sm focus:outline-none focus:border-[#006194] focus:ring-1 focus:ring-[#006194]"
-              placeholder="DOC-101 (Dr. Ahmed), DOC-102, DOC-103"
+              placeholder="phone number"
             />
           </div>
         </div>
