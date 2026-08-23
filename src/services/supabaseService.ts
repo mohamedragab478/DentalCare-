@@ -47,8 +47,7 @@ export const supabaseService = {
     try {
       const { data, error } = await supabase
         .from('patients')
-        .select('*')
-        .order('id', { ascending: true });
+        .select('*');
 
       if (error) {
         console.warn('Could not fetch patients from Supabase:', error.message);
@@ -56,28 +55,36 @@ export const supabaseService = {
       }
 
       if (data && data.length > 0) {
-        const formatted: Patient[] = data.map((item: any) => ({
-          id: String(item.id),
-          name: item.name || '',
-          initials: item.initials || generateInitials(item.name || ''),
-          age: Number(item.age) || 30,
-          gender: item.gender === 'Female' ? 'Female' : 'Male',
-          phone: item.phone || '',
-          birthDate: item.birth_date || item.birthDate,
-          avatar: item.avatar || undefined,
-          lastVisit: item.last_visit || item.lastVisit || 'Today',
-          nextVisit: item.next_visit || item.nextVisit,
-          nextVisitTime: item.next_visit_time || item.nextVisitTime,
-          attendingDoctor: item.attending_doctor || item.attendingDoctor,
-          attendingClinic: item.attending_clinic || item.attendingClinic,
-          medicalNotes: item.medical_notes || item.medicalNotes,
-          treatmentType: item.treatment_type || item.treatmentType,
-          inClinic: Boolean(item.in_clinic ?? item.inClinic),
-          inClinicTime: item.in_clinic_time || item.inClinicTime,
-          teeth: item.teeth || {},
-          visits: Array.isArray(item.visits) ? item.visits : [],
-          images: Array.isArray(item.images) ? item.images : []
-        }));
+        const formatted: Patient[] = data.map((item: any) => {
+          const patientName = item.name || item.full_name || item.fullname || item.patient_name || item.patientName || 'Patient';
+          const patientPhone = item.phone || item.phone_number || item.phoneNumber || item.mobile || item.contact || '';
+          const patientId = String(item.id || item.patient_id || item.patientId || Math.floor(100000 + Math.random() * 900000));
+          
+          return {
+            id: patientId,
+            name: patientName,
+            initials: item.initials || generateInitials(patientName),
+            age: Number(item.age || item.age_years) || 30,
+            gender: (item.gender === 'Female' || item.gender === 'female') ? 'Female' : 'Male',
+            phone: patientPhone,
+            birthDate: item.birth_date || item.birthDate || item.dob,
+            avatar: item.avatar || item.photo || undefined,
+            lastVisit: item.last_visit || item.lastVisit || 'Today',
+            nextVisit: item.next_visit || item.nextVisit || item.appointment_date,
+            nextVisitTime: item.next_visit_time || item.nextVisitTime || item.appointment_time,
+            attendingDoctor: item.attending_doctor || item.attendingDoctor || item.doctor_name,
+            attendingClinic: item.attending_clinic || item.attendingClinic || item.clinic_name || item.clinic,
+            medicalNotes: item.medical_notes || item.medicalNotes || item.notes || item.diagnosis,
+            treatmentType: item.treatment_type || item.treatmentType || item.procedure || 'General Care',
+            inClinic: Boolean(item.in_clinic ?? item.inClinic ?? false),
+            inClinicTime: item.in_clinic_time || item.inClinicTime,
+            inClinicTimestamp: item.in_clinic_timestamp || item.inClinicTimestamp,
+            inClinicOrder: item.in_clinic_order || item.inClinicOrder,
+            teeth: (typeof item.teeth === 'object' && item.teeth !== null) ? item.teeth : {},
+            visits: Array.isArray(item.visits) ? item.visits : [],
+            images: Array.isArray(item.images) ? item.images : []
+          };
+        });
 
         return formatted;
       }

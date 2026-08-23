@@ -92,6 +92,7 @@ export function App() {
         if (cloudPatients && cloudPatients.length > 0) {
           lastSyncedPatientsRef.current = JSON.stringify(cloudPatients);
           setPatients(cloudPatients);
+          storage.setPatients(cloudPatients);
         } else {
           // Push initial data to cloud so Supabase gets populated
           const currentLocalPatients = storage.getPatients();
@@ -102,6 +103,7 @@ export function App() {
         if (cloudClinics && cloudClinics.length > 0) {
           lastSyncedClinicsRef.current = JSON.stringify(cloudClinics);
           setClinics(cloudClinics);
+          storage.setClinics(cloudClinics);
         } else {
           supabaseService.syncClinicsToCloud(storage.getClinics());
         }
@@ -110,6 +112,7 @@ export function App() {
         if (cloudDoctor) {
           lastSyncedDoctorRef.current = JSON.stringify(cloudDoctor);
           setDoctorProfile(cloudDoctor);
+          storage.setDoctorProfile(cloudDoctor);
         } else {
           supabaseService.syncDoctorProfileToCloud(storage.getDoctorProfile());
         }
@@ -332,14 +335,20 @@ export function App() {
 
       const isNowInClinic = !target.inClinic;
       const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      const maxOrder = Math.max(0, ...prev.map((p) => p.inClinicOrder || 0));
+      // Calculate maxOrder among currently in-clinic patients
+      const currentInClinic = prev.filter((p) => p.inClinic && p.id !== patientId);
+      const maxOrder = Math.max(0, ...currentInClinic.map((p) => p.inClinicOrder || 0));
 
       const updatedPatient: Patient = {
         ...target,
         inClinic: isNowInClinic,
         inClinicTime: isNowInClinic ? nowTime : undefined,
-        inClinicOrder: isNowInClinic ? (target.inClinicOrder || maxOrder + 1) : undefined
+        inClinicTimestamp: isNowInClinic ? Date.now() : undefined,
+        inClinicOrder: isNowInClinic ? (maxOrder + 1) : undefined
       };
+
+      // Immediately sync this individual change to Supabase
+      supabaseService.saveSinglePatientToCloud(updatedPatient);
 
       const others = prev.filter((p) => p.id !== patientId);
       const inClinicGroup = others.filter((p) => p.inClinic);
@@ -563,14 +572,22 @@ export function App() {
 
   // Add or Edit Patient
   const handleSavePatient = (savedPatient: Patient) => {
-    setPatients((prev) => {
-      const maxOrder = Math.max(0, ...prev.map((p) => p.inClinicOrder || 0));
-      const patientWithOrder = {
-        ...savedPatient,
-        inClinicTimestamp: savedPatient.inClinic ? (savedPatient.inClinicTimestamp || Date.now()) : undefined,
-        inClinicOrder: savedPatient.inClinic ? (savedPatient.inClinicOrder || maxOrder + 1) : undefined
-      };
+    const currentInClinic = patients.filter((p) => p.inClinic && p.id !== savedPatient.id);
+    const maxOrder = Math.max(0, ...currentInClinic.map((p) => p.inClinicOrder || 0));
+    const patientWithOrder = {
+      ...savedPatient,
+      inClinicTimestamp: savedPatient.inClinic ? (savedPatient.inClinicTimestamp || Date.now()) : undefined,
+      inClinicOrder: savedPatient.inClinic ? (savedPatient.inClinicOrder || maxOrder + 1) : undefined
+    };
 
+    // Trigger instant Supabase save
+    supabaseService.saveSinglePatientToCloud(patientWithOrder).then((success) => {
+      if (!success) {
+        console.warn('Could not save patient directly to Supabase. Check RLS policies or credentials.');
+      }
+    });
+
+    setPatients((prev) => {
       const exists = prev.some((p) => p.id === patientWithOrder.id);
       if (exists) {
         return prev.map((p) => (p.id === patientWithOrder.id ? patientWithOrder : p));

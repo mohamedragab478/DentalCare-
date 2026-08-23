@@ -123,7 +123,14 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
     });
 
     const inClinicList = filtered.filter((p) => p.inClinic);
-    inClinicList.sort((a, b) => (a.inClinicOrder || 999999) - (b.inClinicOrder || 999999));
+    inClinicList.sort((a, b) => {
+      const orderA = a.inClinicOrder ?? 999999;
+      const orderB = b.inClinicOrder ?? 999999;
+      if (orderA !== orderB) return orderA - orderB;
+      const timeA = a.inClinicTimestamp || 0;
+      const timeB = b.inClinicTimestamp || 0;
+      return timeA - timeB;
+    });
 
     const notInClinicList = filtered.filter((p) => !p.inClinic);
 
