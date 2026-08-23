@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { DoctorProfile, ClinicRoom } from '../types';
 import { useAppThemeLanguage } from '../context/ThemeLanguageContext';
+import { supabaseService } from '../services/supabaseService';
 
 interface DoctorSettingsViewProps {
   doctorProfile: DoctorProfile;
@@ -39,6 +40,17 @@ export const DoctorSettingsView: React.FC<DoctorSettingsViewProps> = ({
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [photoError, setPhotoError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Password Management State
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [pwdLoading, setPwdLoading] = useState(false);
+  const [pwdError, setPwdError] = useState<string | null>(null);
+  const [pwdSuccess, setPwdSuccess] = useState<string | null>(null);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -83,6 +95,66 @@ export const DoctorSettingsView: React.FC<DoctorSettingsViewProps> = ({
     setTimeout(() => setSaveSuccess(false), 3000);
   };
 
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPwdError(null);
+    setPwdSuccess(null);
+
+    const cleanOld = oldPassword.trim();
+    const cleanNew = newPassword.trim();
+    const cleanConfirm = confirmPassword.trim();
+
+    if (!cleanOld) {
+      setPwdError(isRTL ? 'يرجى إدخال كلمة المرور القديمة / الحالية.' : 'Please enter your current password.');
+      return;
+    }
+
+    if (!cleanNew) {
+      setPwdError(isRTL ? 'يرجى إدخال كلمة المرور الجديدة.' : 'Please enter your new password.');
+      return;
+    }
+
+    if (cleanNew.length < 4) {
+      setPwdError(isRTL ? 'يجب أن تتكون كلمة المرور الجديدة من 4 أحرف أو أرقام على الأقل.' : 'New password must be at least 4 characters long.');
+      return;
+    }
+
+    if (cleanNew !== cleanConfirm) {
+      setPwdError(isRTL ? 'كلمة المرور الجديدة غير متطابقة في الخانتين. يرجى كتابتها هي هي في المرتين.' : 'New password and confirmation do not match.');
+      return;
+    }
+
+    setPwdLoading(true);
+
+    try {
+      const res = await supabaseService.updateDoctorPassword(doctorProfile.id, cleanOld, cleanNew);
+      if (res.success) {
+        setPwdSuccess(
+          isRTL
+            ? 'تم تحديث وتغيير كلمة المرور بنجاح في قاعدة البيانات!'
+            : 'Password has been updated successfully in the database!'
+        );
+        // Update active profile state
+        const updatedProfile = { ...doctorProfile, password: cleanNew };
+        onUpdateDoctorProfile(updatedProfile);
+        setFormData(prev => ({ ...prev, password: cleanNew }));
+        // Reset password fields
+        setOldPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        setTimeout(() => setPwdSuccess(null), 4000);
+      } else {
+        setPwdError(
+          res.error || (isRTL ? 'فشل تحديث كلمة المرور. تأكد من صحة كلمة المرور القديمة.' : 'Failed to update password. Please check your old password.')
+        );
+      }
+    } catch (err: any) {
+      setPwdError(err?.message || (isRTL ? 'حدث خطأ في الاتصال بقاعدة البيانات.' : 'Connection error occurred.'));
+    } finally {
+      setPwdLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-12 animate-in fade-in duration-200 transition-colors">
       {/* Page Header */}
@@ -93,7 +165,7 @@ export const DoctorSettingsView: React.FC<DoctorSettingsViewProps> = ({
             <span>{t('settings')}</span>
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            {isRTL ? "إدارة بيانات الطبيب المعالج، الصورة الشخصية، وتخصيص الغرفة والعيادة" : "Manage your attending specialist credentials, profile photo, and operatory suite allocation"}
+            {isRTL ? "إدارة بيانات الطبيب المعالج، كلمة المرور، الصورة الشخصية، وتخصيص الغرفة والعيادة" : "Manage your attending specialist credentials, security password, profile photo, and operatory suite"}
           </p>
         </div>
 
@@ -105,8 +177,8 @@ export const DoctorSettingsView: React.FC<DoctorSettingsViewProps> = ({
         )}
       </div>
 
+      {/* 1. Doctor Profile Picture Upload Section */}
       <form onSubmit={handleSave} className="space-y-6">
-        {/* 1. Doctor Profile Picture Upload Section */}
         <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-[#e2e8f0] dark:border-slate-800 shadow-xs">
           <div className="border-b border-slate-100 dark:border-slate-800 pb-4 mb-6">
             <h2 className="font-headline font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
@@ -317,7 +389,7 @@ export const DoctorSettingsView: React.FC<DoctorSettingsViewProps> = ({
               </label>
               <input
                 type="text"
-                value={formData.licenseNumber}
+                value={formData.licenseNumber || ''}
                 onChange={(e) => setFormData(prev => ({ ...prev, licenseNumber: e.target.value }))}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-mono focus:outline-none focus:border-[#006194]"
               />
@@ -346,66 +418,214 @@ export const DoctorSettingsView: React.FC<DoctorSettingsViewProps> = ({
             </button>
           </div>
         </div>
+      </form>
 
-        {/* 3. Supabase Cloud Database Sync Card */}
-        <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-[#e2e8f0] dark:border-slate-800 shadow-xs">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-4 mb-6">
+      {/* 3. Change Password Security Section (NEW) */}
+      <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-[#e2e8f0] dark:border-slate-800 shadow-xs">
+        <div className="border-b border-slate-100 dark:border-slate-800 pb-4 mb-5">
+          <div className="flex items-center justify-between">
+            <h2 className="font-headline font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+              <span className="material-symbols-outlined text-[#006194] dark:text-[#00a3e0] text-[22px]">lock_reset</span>
+              <span>{isRTL ? "تغيير كلمة المرور الخاصة بالطبيب" : "Change Doctor Security Password"}</span>
+            </h2>
+            <span className="text-[11px] font-semibold text-slate-400 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full">
+              {doctorProfile.id.toUpperCase()}
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            {isRTL 
+              ? "لتحديث كلمة المرور، يرجى إدخال كلمة المرور الحالية والتأكد من مطابقة كلمة المرور الجديدة في المرتين."
+              : "To update your password, enter your current password and ensure the new password is typed identically in both fields."}
+          </p>
+        </div>
+
+        {/* Feedback Alerts */}
+        {pwdError && (
+          <div className="mb-4 p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+            <span className="material-symbols-outlined text-[18px] shrink-0">error</span>
+            <span>{pwdError}</span>
+          </div>
+        )}
+
+        {pwdSuccess && (
+          <div className="mb-4 p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+            <span className="material-symbols-outlined text-[18px] shrink-0">check_circle</span>
+            <span>{pwdSuccess}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleChangePassword} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* 1. Old / Current Password */}
             <div>
-              <h2 className="font-headline font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
-                <span className="material-symbols-outlined text-[#006194] dark:text-[#00a3e0] text-[22px]">cloud_sync</span>
-                <span>{isRTL ? "مزامنة قاعدة بيانات Supabase السحابية" : "Supabase Cloud Database & Data Sync"}</span>
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                {isRTL 
-                  ? "رفع ومزامنة بيانات الـ 3 دكاترة والـ 3 مرضى وجميع السجلات الطبية مباشرة إلى السحابة." 
-                  : "Sync the 3 attending doctors, 3 primary patients, and all clinical records directly to your Supabase project."}
-              </p>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                {isRTL ? "كلمة المرور القديمة (الحالية)" : "Current Password"} *
+              </label>
+              <div className="relative">
+                <input
+                  type={showOldPassword ? 'text' : 'password'}
+                  required
+                  value={oldPassword}
+                  onChange={(e) => {
+                    setOldPassword(e.target.value);
+                    setPwdError(null);
+                  }}
+                  placeholder={isRTL ? "أدخل كلمة المرور الحالية" : "Enter old password"}
+                  className="w-full pl-3.5 pr-10 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-[#006194]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowOldPassword(!showOldPassword)}
+                  className={`absolute ${isRTL ? 'left-3' : 'right-3'} top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer`}
+                >
+                  <span className="material-symbols-outlined text-[18px]">
+                    {showOldPassword ? 'visibility_off' : 'visibility'}
+                  </span>
+                </button>
+              </div>
             </div>
 
-            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-bold">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>vergecufkruhmpygvmwa.supabase.co</span>
+            {/* 2. New Password */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                {isRTL ? "كلمة المرور الجديدة" : "New Password"} *
+              </label>
+              <div className="relative">
+                <input
+                  type={showNewPassword ? 'text' : 'password'}
+                  required
+                  value={newPassword}
+                  onChange={(e) => {
+                    setNewPassword(e.target.value);
+                    setPwdError(null);
+                  }}
+                  placeholder={isRTL ? "كلمة المرور الجديدة" : "Enter new password"}
+                  className="w-full pl-3.5 pr-10 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-[#006194]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className={`absolute ${isRTL ? 'left-3' : 'right-3'} top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer`}
+                >
+                  <span className="material-symbols-outlined text-[18px]">
+                    {showNewPassword ? 'visibility_off' : 'visibility'}
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* 3. Confirm New Password */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                {isRTL ? "تأكيد كلمة المرور الجديدة" : "Confirm New Password"} *
+              </label>
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => {
+                    setConfirmPassword(e.target.value);
+                    setPwdError(null);
+                  }}
+                  placeholder={isRTL ? "أعد كتابة الكلمة الجديدة" : "Confirm new password"}
+                  className="w-full pl-3.5 pr-10 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-[#006194]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className={`absolute ${isRTL ? 'left-3' : 'right-3'} top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer`}
+                >
+                  <span className="material-symbols-outlined text-[18px]">
+                    {showConfirmPassword ? 'visibility_off' : 'visibility'}
+                  </span>
+                </button>
+              </div>
             </div>
           </div>
 
-          <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700 mb-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                <span className="material-symbols-outlined text-blue-600 dark:text-blue-400 text-[18px]">medical_services</span>
-                <span>{isRTL ? "3 أطباء: د. أحمد السيد، د. محمد حسن، د. محمود إبراهيم" : "3 Doctors: Dr. Ahmed, Dr. Mohamed, Dr. Mahmoud"}</span>
-              </div>
-              <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-[18px]">personal_injury</span>
-                <span>{isRTL ? "3 مرضى: محمد علي، أليس سميث، إميلي ويليامز" : "3 Patients: Mohamed Ali, Alice Smith, Emily Williams"}</span>
-              </div>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+            <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-[15px]">security</span>
+              <span>{isRTL ? "يتم تشفير وتحديث كلمة المرور مباشرة في قاعدة البيانات" : "Password is encrypted and synced directly to Supabase"}</span>
             </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {isRTL 
-                ? "تم تجهيز كود SQL في ملف supabase-schema.sql مع أمر INSERT للـ 3 دكاترة والـ 3 مرضى." 
-                : "Full schema and seed SQL are prepared in supabase-schema.sql for one-click execution."}
-            </p>
 
             <button
-              type="button"
-              onClick={async () => {
-                const res = await (await import('../services/supabaseService')).supabaseService.seedAllInitialData();
-                if (res.success) {
-                  alert(isRTL ? "تم بنجاح رفع ومزامنة بيانات الـ 3 دكاترة والـ 3 مرضى إلى قاعدة بيانات Supabase!" : res.message);
-                } else {
-                  alert(isRTL ? "تأكد من تشغيل ملف supabase-schema.sql في Supabase SQL Editor أولاً: " + res.message : res.message);
-                }
-              }}
-              className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-black dark:bg-blue-600 dark:hover:bg-blue-500 text-white text-xs font-bold shadow-sm transition-all cursor-pointer flex items-center gap-2"
+              type="submit"
+              disabled={pwdLoading}
+              className="px-6 py-2.5 rounded-xl bg-[#006194] hover:bg-[#004b73] disabled:opacity-50 text-white text-xs font-bold shadow-md cursor-pointer transition-transform active:scale-95 flex items-center gap-2"
             >
-              <span className="material-symbols-outlined text-[18px]">publish</span>
-              <span>{isRTL ? "رفع البيانات الآن للسحابة" : "Sync Data to Supabase Now"}</span>
+              <span className="material-symbols-outlined text-[18px]">
+                {pwdLoading ? 'hourglass_top' : 'key'}
+              </span>
+              <span>
+                {pwdLoading
+                  ? (isRTL ? "جاري التحديث..." : "Updating...")
+                  : (isRTL ? "تحديث كلمة المرور" : "Update Password")}
+              </span>
             </button>
           </div>
+        </form>
+      </div>
+
+      {/* 4. Supabase Cloud Database Sync Card */}
+      <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-[#e2e8f0] dark:border-slate-800 shadow-xs">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-4 mb-6">
+          <div>
+            <h2 className="font-headline font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+              <span className="material-symbols-outlined text-[#006194] dark:text-[#00a3e0] text-[22px]">cloud_sync</span>
+              <span>{isRTL ? "مزامنة قاعدة بيانات Supabase السحابية" : "Supabase Cloud Database & Data Sync"}</span>
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              {isRTL 
+                ? "رفع ومزامنة بيانات الـ 3 دكاترة والـ 3 مرضى وجميع السجلات الطبية مباشرة إلى السحابة." 
+                : "Sync the 3 attending doctors, 3 primary patients, and all clinical records directly to your Supabase project."}
+            </p>
+          </div>
+
+          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-bold">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>vergecufkruhmpygvmwa.supabase.co</span>
+          </div>
         </div>
-      </form>
+
+        <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700 mb-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+              <span className="material-symbols-outlined text-blue-600 dark:text-blue-400 text-[18px]">medical_services</span>
+              <span>{isRTL ? "3 أطباء: د. أحمد السيد، د. محمد حسن، د. محمود إبراهيم" : "3 Doctors: Dr. Ahmed, Dr. Mohamed, Dr. Mahmoud"}</span>
+            </div>
+            <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+              <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-[18px]">personal_injury</span>
+              <span>{isRTL ? "3 مرضى: محمد علي، أليس سميث، إميلي ويليامز" : "3 Patients: Mohamed Ali, Alice Smith, Emily Williams"}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            {isRTL 
+              ? "تم تجهيز كود SQL في ملف supabase-schema.sql مع أمر INSERT للـ 3 دكاترة والـ 3 مرضى." 
+              : "Full schema and seed SQL are prepared in supabase-schema.sql for one-click execution."}
+          </p>
+
+          <button
+            type="button"
+            onClick={async () => {
+              const res = await supabaseService.seedAllInitialData();
+              if (res.success) {
+                alert(isRTL ? "تم بنجاح رفع ومزامنة بيانات الـ 3 دكاترة والـ 3 مرضى إلى قاعدة بيانات Supabase!" : res.message);
+              } else {
+                alert(isRTL ? "تأكد من تشغيل ملف supabase-schema.sql في Supabase SQL Editor أولاً: " + res.message : res.message);
+              }
+            }}
+            className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-black dark:bg-blue-600 dark:hover:bg-blue-500 text-white text-xs font-bold shadow-sm transition-all cursor-pointer flex items-center gap-2"
+          >
+            <span className="material-symbols-outlined text-[18px]">publish</span>
+            <span>{isRTL ? "رفع البيانات الآن للسحابة" : "Sync Data to Supabase Now"}</span>
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

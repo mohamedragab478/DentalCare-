@@ -156,13 +156,14 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
     });
 
     if (matchedDoctor) {
-      // STRICT PASSWORD CHECK FOR DOCTORS
-      const validDoctorPasswords = ['clinicPass2026', 'admin123', 'doctor2026', '123456'];
+      // PASSWORD CHECK FOR DOCTORS (Uses changed password from doctor profile or default)
+      const expectedDocPass = matchedDoctor.password || 'clinicPass2026';
+      const validDoctorPasswords = [expectedDocPass, 'clinicPass2026', 'admin123', 'doctor2026', '123456'];
       if (!validDoctorPasswords.includes(trimmedPassword)) {
         setErrorMsg(
           isRTL
-            ? 'كلمة المرور غير صحيحة لحساب هذا الطبيب. كلمة المرور الصحيحة للتجربة هي: clinicPass2026'
-            : 'Incorrect password for this doctor account. Valid password is: clinicPass2026'
+            ? 'كلمة المرور غير صحيحة لحساب هذا الطبيب. يرجى التحقق من كلمة المرور وإعادة المحاولة.'
+            : 'Incorrect password for this doctor account. Please verify and try again.'
         );
         return;
       }

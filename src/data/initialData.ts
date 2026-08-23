@@ -10,7 +10,8 @@ export const DOCTORS_LIST: DoctorProfile[] = [
     phone: '+20 100 123 4567',
     email: 'dr.ahmed@dentalcarepro.com',
     consultationFee: 200,
-    bio: 'Senior Consultant in Prosthetic Dentistry and Implantology with over 15 years of clinical experience.'
+    bio: 'Senior Consultant in Prosthetic Dentistry and Implantology with over 15 years of clinical experience.',
+    password: 'clinicPass2026'
   },
   {
     id: 'doc-02',
@@ -21,7 +22,8 @@ export const DOCTORS_LIST: DoctorProfile[] = [
     phone: '+20 101 234 5678',
     email: 'dr.mohamed@dentalcarepro.com',
     consultationFee: 180,
-    bio: 'Specialist in Clear Aligners, Fixed Orthodontics, and Preventive Pediatric Dental Care.'
+    bio: 'Specialist in Clear Aligners, Fixed Orthodontics, and Preventive Pediatric Dental Care.',
+    password: 'clinicPass2026'
   },
   {
     id: 'doc-03',
@@ -32,7 +34,8 @@ export const DOCTORS_LIST: DoctorProfile[] = [
     phone: '+20 102 345 6789',
     email: 'dr.mahmoud@dentalcarepro.com',
     consultationFee: 190,
-    bio: 'Microscopic Endodontist and Specialist in Periodontal Regeneration and Gum Surgery.'
+    bio: 'Microscopic Endodontist and Specialist in Periodontal Regeneration and Gum Surgery.',
+    password: 'clinicPass2026'
   }
 ];
 

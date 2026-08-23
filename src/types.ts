@@ -75,6 +75,8 @@ export interface DoctorProfile {
   email: string;
   consultationFee: number;
   bio?: string;
+  licenseNumber?: string;
+  password?: string;
 }
 
 export type UserRole = 'doctor' | 'patient';

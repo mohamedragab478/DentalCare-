@@ -10,19 +10,33 @@ export const DoctorLogin: React.FC<DoctorLoginProps> = ({
   onLoginSuccess,
   onGoToPatientLogin
 }) => {
-  const [clinicalId, setClinicalId] = useState('DOC-101');
-  const [password, setPassword] = useState('clinicPass2026');
+  const [clinicalId, setClinicalId] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
 
     const cleanInput = clinicalId.trim().toLowerCase();
     const digitsOnly = clinicalId.replace(/\D/g, '');
     const trimmedPassword = password.trim();
+
+    if (!cleanInput || !trimmedPassword) {
+      setErrorMsg('Please enter both your Doctor ID and Password.');
+      return;
+    }
+
+    try {
+      const { supabaseService } = await import('../services/supabaseService');
+      const authRes = await supabaseService.authenticateUser(cleanInput, trimmedPassword);
+      if (authRes.success && authRes.role === 1) {
+        onLoginSuccess(authRes.refId);
+        return;
+      }
+    } catch (e) {}
 
     const matchedDoctor = DOCTORS_LIST.find((d) => {
       const docDigits = d.id.replace(/\D/g, '');
@@ -48,10 +62,11 @@ export const DoctorLogin: React.FC<DoctorLoginProps> = ({
       return;
     }
 
-    // Strict Password Validation
-    const validDoctorPasswords = ['clinicPass2026', 'admin123', 'doctor2026', '123456'];
+    // Password Validation
+    const expectedPass = matchedDoctor.password || 'clinicPass2026';
+    const validDoctorPasswords = [expectedPass, 'clinicPass2026', 'admin123', 'doctor2026', '123456'];
     if (!validDoctorPasswords.includes(trimmedPassword)) {
-      setErrorMsg('Incorrect password. Please enter the valid clinic password.');
+      setErrorMsg('Incorrect password. Please enter your valid doctor password.');
       return;
     }
 

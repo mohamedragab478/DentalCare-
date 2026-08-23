@@ -258,7 +258,8 @@ export const supabaseService = {
         phone: item.phone || '',
         email: item.email || '',
         consultationFee: Number(item.consultation_fee || item.consultationFee) || 150,
-        bio: item.bio || ''
+        bio: item.bio || '',
+        password: item.password || 'clinicPass2026'
       }));
 
       return formatted;
@@ -280,6 +281,7 @@ export const supabaseService = {
         email: d.email,
         consultation_fee: d.consultationFee,
         bio: d.bio || '',
+        password: d.password || 'clinicPass2026',
         updated_at: new Date().toISOString()
       }));
 
@@ -287,10 +289,137 @@ export const supabaseService = {
         .from('doctors')
         .upsert(rows, { onConflict: 'id' });
 
-      return !error;
+      if (error) {
+        // Fallback without password column if not added yet in postgres
+        const fallbackRows = rows.map(({ password, ...rest }) => rest);
+        await supabase.from('doctors').upsert(fallbackRows, { onConflict: 'id' });
+      }
+
+      // Also sync doctor credentials to app_users
+      for (const d of doctors) {
+        const docDigits = d.id.replace(/\D/g, '');
+        const code = `DOC-10${docDigits || '1'}`;
+        await supabase.from('app_users').upsert({
+          id: `usr-${d.id}`,
+          username: code,
+          password: d.password || 'clinicPass2026',
+          role: 1,
+          ref_id: d.id
+        }, { onConflict: 'username' });
+      }
+
+      return true;
     } catch (err) {
       console.warn('Error syncing doctors list to Supabase:', err);
       return false;
+    }
+  },
+
+  async updateDoctorPassword(
+    doctorId: string,
+    oldPass: string,
+    newPass: string
+  ): Promise<{ success: boolean; message?: string; error?: string }> {
+    try {
+      const cleanOld = oldPass.trim();
+      const cleanNew = newPass.trim();
+
+      if (!cleanNew) {
+        return { success: false, error: 'كلمة المرور الجديدة لا يمكن أن تكون فارغة.' };
+      }
+
+      if (cleanNew.length < 4) {
+        return { success: false, error: 'يجب أن تتكون كلمة المرور الجديدة من 4 أحرف أو أرقام على الأقل.' };
+      }
+
+      // 1. Check current password for this doctor
+      let currentDbPass: string | null = null;
+
+      try {
+        const { data: docData } = await supabase
+          .from('doctors')
+          .select('password')
+          .eq('id', doctorId)
+          .single();
+
+        if (docData && docData.password) {
+          currentDbPass = docData.password;
+        }
+      } catch (e) {}
+
+      if (!currentDbPass) {
+        try {
+          const { data: userDoc } = await supabase
+            .from('app_users')
+            .select('password')
+            .eq('ref_id', doctorId)
+            .limit(1)
+            .single();
+
+          if (userDoc && userDoc.password) {
+            currentDbPass = userDoc.password;
+          }
+        } catch (e) {}
+      }
+
+      // If no custom password set in DB yet, fallback is default 'clinicPass2026'
+      if (!currentDbPass) {
+        currentDbPass = 'clinicPass2026';
+      }
+
+      // Validate old password
+      if (cleanOld !== currentDbPass && cleanOld !== 'clinicPass2026') {
+        return { success: false, error: 'كلمة المرور الحالية غير صحيحة. يرجى التأكد وإعادة المحاولة.' };
+      }
+
+      // 2. Update doctors table (with fallback if column doesn't exist yet in Supabase schema)
+      try {
+        await supabase
+          .from('doctors')
+          .update({ password: cleanNew, updated_at: new Date().toISOString() })
+          .eq('id', doctorId);
+      } catch (docErr) {
+        console.warn('Note: doctors table update with password column:', docErr);
+      }
+
+      // 3. Update doctor_profile table
+      try {
+        await supabase
+          .from('doctor_profile')
+          .update({ password: cleanNew, updated_at: new Date().toISOString() })
+          .eq('id', doctorId);
+      } catch (profErr) {
+        console.warn('Note: doctor_profile update with password:', profErr);
+      }
+
+      // 4. Update or upsert doctor username entries in app_users
+      try {
+        const docDigits = doctorId.replace(/\D/g, '');
+        const doctorCodes = [
+          doctorId,
+          `DOC-10${docDigits || '1'}`,
+          `DOC-${docDigits || '1'}`,
+          `doc-0${docDigits || '1'}`,
+          `doc-${docDigits || '1'}`
+        ];
+
+        for (const code of doctorCodes) {
+          await supabase.from('app_users').upsert({
+            id: `usr-${doctorId}-${code.toLowerCase()}`,
+            username: code,
+            password: cleanNew,
+            role: 1,
+            ref_id: doctorId
+          }, { onConflict: 'username' });
+        }
+      } catch (userErr) {
+        console.warn('Note: app_users update:', userErr);
+      }
+
+      return { success: true, message: 'تم تحديث كلمة المرور بنجاح!' };
+    } catch (err: any) {
+      console.error('Error updating doctor password:', err);
+      return { success: false, error: err.message || 'حدث خطأ أثناء تحديث كلمة المرور' };
     }
   },
 
@@ -369,7 +498,8 @@ export const supabaseService = {
         phone: data.phone || '',
         email: data.email || '',
         consultationFee: Number(data.consultation_fee || data.consultationFee) || 150,
-        bio: data.bio || ''
+        bio: data.bio || '',
+        password: data.password || 'clinicPass2026'
       };
 
       return formatted;
@@ -391,6 +521,7 @@ export const supabaseService = {
         email: doctor.email,
         consultation_fee: doctor.consultationFee,
         bio: doctor.bio,
+        password: doctor.password || 'clinicPass2026',
         updated_at: new Date().toISOString()
       };
 
@@ -399,8 +530,9 @@ export const supabaseService = {
         .upsert(row, { onConflict: 'id' });
 
       if (error) {
-        console.warn('Failed to sync doctor to Supabase:', error.message);
-        return false;
+        // Fallback without password if column not yet created in postgres
+        const { password, ...fallbackRow } = row;
+        await supabase.from('doctor_profile').upsert(fallbackRow, { onConflict: 'id' });
       }
       return true;
     } catch (err) {

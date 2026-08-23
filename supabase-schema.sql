@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS public.doctors (
     email TEXT,
     consultation_fee NUMERIC DEFAULT 150,
     bio TEXT,
+    password TEXT DEFAULT 'clinicPass2026',
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 ALTER TABLE public.doctors ADD COLUMN IF NOT EXISTS avatar TEXT;
@@ -75,6 +76,7 @@ ALTER TABLE public.doctors ADD COLUMN IF NOT EXISTS phone TEXT;
 ALTER TABLE public.doctors ADD COLUMN IF NOT EXISTS email TEXT;
 ALTER TABLE public.doctors ADD COLUMN IF NOT EXISTS consultation_fee NUMERIC DEFAULT 150;
 ALTER TABLE public.doctors ADD COLUMN IF NOT EXISTS bio TEXT;
+ALTER TABLE public.doctors ADD COLUMN IF NOT EXISTS password TEXT DEFAULT 'clinicPass2026';
 
 -- C. Clinics Table
 CREATE TABLE IF NOT EXISTS public.clinics (
@@ -99,8 +101,10 @@ CREATE TABLE IF NOT EXISTS public.doctor_profile (
     email TEXT,
     consultation_fee NUMERIC DEFAULT 150,
     bio TEXT,
+    password TEXT DEFAULT 'clinicPass2026',
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
+ALTER TABLE public.doctor_profile ADD COLUMN IF NOT EXISTS password TEXT DEFAULT 'clinicPass2026';
 
 -- E. Clinic Queue Tracking Table
 CREATE TABLE IF NOT EXISTS public.clinic_queue (
