@@ -8,6 +8,8 @@ interface UnifiedHeaderProps {
   userRole: UserRole;
   doctorProfile?: DoctorProfile;
   activePatient?: Patient | null;
+  activeClinic?: string;
+  onUpdateActiveClinic?: (clinic: string) => void;
   onLogout: () => void;
   onAddPatient?: () => void;
   onScheduleVisit?: () => void;
@@ -19,6 +21,8 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
   userRole,
   doctorProfile,
   activePatient,
+  activeClinic,
+  onUpdateActiveClinic,
   onLogout,
   onAddPatient,
   onScheduleVisit
@@ -26,6 +30,7 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
   const { lang, theme, toggleLanguage, toggleTheme, t, isRTL } = useAppThemeLanguage();
   const [showNotificationToast, setShowNotificationToast] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showClinicMenu, setShowClinicMenu] = useState(false);
 
   const clinicLogo = 'https://lh3.googleusercontent.com/aida-public/AB6AXuB44Wc_reKFt02f-BdI9PRYxzBZCIcejQgo_rqs2o6qCGn65HRrXMB4R_BKX4QdLZR6fEp-bT50cwNHoLB0DIqcMKLj9zhQedP7O6j4MT51zvoe9HwmIqk_1ZCMA_TkhVytVxKG65N1Jjfh0ZJVUeqE4XwBgRzWqNRizyzxRXvscMP45M0WpZuWynL2hz7O_ahrc85Ck4uXddLah2rxNjJIYqQBM_z0JVawCzNPmxbFhJjnEnmtW-oAAA';
   const defaultDoctorAvatar = 'https://lh3.googleusercontent.com/aida-public/AB6AXuAxTdB6BFCRDU6qr8N5YlyqcvvBqAlixK076_tUMWhheQjfjcVCtO0UBEY8sL1jYC9cucKVnoLoEgJlDKaSn0Qb5FJkx7v8MdhtOBjzCb8dHppP7IhiJllCOCEHHLwVXSrsa5mcVTHwz5OLt5nCjCSdaOMEjmqz6mQGAz0pZXk-7oBvgitx-9e-JaGvGW1CTaWYwwuVfl_PBgRvo3t6bQ1DMA1TZCepbWvSxDJrfFFqBCZE6ilABoY5eg';
@@ -118,30 +123,6 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
 
           {/* 2. Action Buttons & Quick Utilities */}
           <div className="flex items-center gap-2 shrink-0">
-            {/* Quick Actions (Doctor only) */}
-            {isDoctor && (
-              <div className="hidden xl:flex items-center gap-2">
-                {onScheduleVisit && (
-                  <button
-                    onClick={onScheduleVisit}
-                    className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-[16px] text-emerald-600">calendar_add_on</span>
-                    <span>{t('schedule_next_visit')}</span>
-                  </button>
-                )}
-                {onAddPatient && (
-                  <button
-                    onClick={onAddPatient}
-                    className="bg-[#006194] hover:bg-[#004b73] text-white px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-[16px]">person_add</span>
-                    <span>{t('new_patient')}</span>
-                  </button>
-                )}
-              </div>
-            )}
-
             {/* Language Switcher */}
             <button
               onClick={toggleLanguage}

@@ -18,6 +18,7 @@ import { NewConsultationModal } from './components/NewConsultationModal';
 import { AddPatientModal } from './components/AddPatientModal';
 import { UploadImageModal } from './components/UploadImageModal';
 import { ScheduleVisitModal } from './components/ScheduleVisitModal';
+import { SelectClinicModal } from './components/SelectClinicModal';
 import { useAppThemeLanguage } from './context/ThemeLanguageContext';
 
 export function App() {
@@ -31,7 +32,7 @@ export function App() {
   // Attending Doctor Profile State (Loaded with Persistent Storage fallback)
   const [doctorProfile, setDoctorProfile] = useState<DoctorProfile>(() => storage.getDoctorProfile());
 
-  // Today's Queue Completed Status Tracking (خلصت البيشنت دا)
+  // Today's Queue Completed Status Tracking (تم الانتهاء)
   const [completedQueueIds, setCompletedQueueIds] = useState<string[]>(() => storage.getCompletedQueue());
 
   // Application Data State (Loaded with Persistent Storage fallback)
@@ -205,12 +206,61 @@ export function App() {
     };
   }, []);
 
+  // Active Doctor Clinic State
+  const [activeClinic, setActiveClinic] = useState<string>(() => doctorProfile.assignedClinic || 'Clinic 1');
+
+  const handleUpdateActiveClinic = (clinic: string) => {
+    setActiveClinic(clinic);
+    
+    // 1. Update doctor profile
+    const updatedDoctor = {
+      ...doctorProfile,
+      assignedClinic: clinic
+    };
+    setDoctorProfile(updatedDoctor);
+
+    // 2. Automatically assign doctor to the selected clinic room in the Clinics Roster
+    setClinics((prev) => {
+      const updatedClinics = prev.map((room) => {
+        const isTarget = room.name.toLowerCase() === clinic.toLowerCase();
+        const wasDoctorRoom =
+          room.doctorName === doctorProfile.name ||
+          (doctorProfile.assignedClinic && room.name.toLowerCase() === doctorProfile.assignedClinic.toLowerCase());
+
+        if (isTarget) {
+          return {
+            ...room,
+            status: 'occupied' as const,
+            doctorName: doctorProfile.name,
+            doctorAvatar: doctorProfile.avatar,
+            doctorSpecialty: doctorProfile.specialty
+          };
+        }
+        if (wasDoctorRoom) {
+          return {
+            ...room,
+            status: 'available' as const,
+            doctorName: undefined,
+            doctorAvatar: undefined,
+            doctorSpecialty: undefined,
+            currentPatient: undefined
+          };
+        }
+        return room;
+      });
+
+      storage.syncAll(updatedDoctor, updatedClinics, patients);
+      return updatedClinics;
+    });
+  };
+
   // Modals & Edit State
   const [isConsultationOpen, setIsConsultationOpen] = useState(false);
   const [isAddPatientOpen, setIsAddPatientOpen] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [isUploadImageOpen, setIsUploadImageOpen] = useState(false);
   const [isScheduleVisitOpen, setIsScheduleVisitOpen] = useState(false);
+  const [isSelectClinicOpen, setIsSelectClinicOpen] = useState(false);
   const [scheduleTargetPatient, setScheduleTargetPatient] = useState<Patient | null>(null);
 
   // Current active patient
@@ -245,6 +295,7 @@ export function App() {
     setIsAuthenticated(true);
     setUserRole('doctor');
     setCurrentView('doctor-dashboard');
+    setIsSelectClinicOpen(true); // Open center-screen window to select active clinic
   };
 
   const handlePatientLogin = (inputPatientId?: string) => {
@@ -281,31 +332,36 @@ export function App() {
 
       const isNowInClinic = !target.inClinic;
       const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const maxOrder = Math.max(0, ...prev.map((p) => p.inClinicOrder || 0));
 
       const updatedPatient: Patient = {
         ...target,
         inClinic: isNowInClinic,
-        inClinicTime: isNowInClinic ? nowTime : undefined
+        inClinicTime: isNowInClinic ? nowTime : undefined,
+        inClinicOrder: isNowInClinic ? (target.inClinicOrder || maxOrder + 1) : undefined
       };
 
+      const others = prev.filter((p) => p.id !== patientId);
+      const inClinicGroup = others.filter((p) => p.inClinic);
+      const notInClinicGroup = others.filter((p) => !p.inClinic);
+
       if (isNowInClinic) {
-        // Move to the top of the queue right after any patients already in clinic
-        const others = prev.filter((p) => p.id !== patientId);
-        const alreadyInClinic = others.filter((p) => p.inClinic);
-        const notInClinic = others.filter((p) => !p.inClinic);
-        return [...alreadyInClinic, updatedPatient, ...notInClinic];
+        return [...inClinicGroup, updatedPatient, ...notInClinicGroup];
       } else {
-        // If untoggled, preserve others and put this patient with the non-in-clinic group
-        const others = prev.filter((p) => p.id !== patientId);
-        const alreadyInClinic = others.filter((p) => p.inClinic);
-        const notInClinic = others.filter((p) => !p.inClinic);
-        return [...alreadyInClinic, ...notInClinic, updatedPatient];
+        return [...inClinicGroup, ...notInClinicGroup, updatedPatient];
       }
     });
   };
 
   const handleReorderPatients = (newOrder: Patient[]) => {
-    setPatients(newOrder);
+    let orderCounter = 1;
+    const reordered = newOrder.map((p) => {
+      if (p.inClinic) {
+        return { ...p, inClinicOrder: orderCounter++ };
+      }
+      return { ...p, inClinicOrder: undefined };
+    });
+    setPatients(reordered);
   };
 
   const handleLogout = () => {
@@ -505,15 +561,26 @@ export function App() {
     );
   };
 
-  // Add or Edit Patient (New patients are appended to the END of the list)
+  // Add or Edit Patient
   const handleSavePatient = (savedPatient: Patient) => {
     setPatients((prev) => {
-      const exists = prev.some((p) => p.id === savedPatient.id);
+      const maxOrder = Math.max(0, ...prev.map((p) => p.inClinicOrder || 0));
+      const patientWithOrder = {
+        ...savedPatient,
+        inClinicTimestamp: savedPatient.inClinic ? (savedPatient.inClinicTimestamp || Date.now()) : undefined,
+        inClinicOrder: savedPatient.inClinic ? (savedPatient.inClinicOrder || maxOrder + 1) : undefined
+      };
+
+      const exists = prev.some((p) => p.id === patientWithOrder.id);
       if (exists) {
-        return prev.map((p) => (p.id === savedPatient.id ? savedPatient : p));
+        return prev.map((p) => (p.id === patientWithOrder.id ? patientWithOrder : p));
       }
-      // Put new patient at the end of the list
-      return [...prev, savedPatient];
+      if (patientWithOrder.inClinic) {
+        const alreadyInClinic = prev.filter((p) => p.inClinic);
+        const notInClinic = prev.filter((p) => !p.inClinic);
+        return [...alreadyInClinic, patientWithOrder, ...notInClinic];
+      }
+      return [...prev, patientWithOrder];
     });
     setSelectedPatientId(savedPatient.id);
     setEditingPatient(null);
@@ -523,11 +590,14 @@ export function App() {
     setPatients((prev) => {
       const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const todayDate = new Date().toISOString().split('T')[0];
+      const maxOrder = Math.max(0, ...prev.map((p) => p.inClinicOrder || 0));
 
       const updatedTarget: Patient = {
         ...existingPatient,
         inClinic: true,
         inClinicTime: nowTime,
+        inClinicTimestamp: existingPatient.inClinicTimestamp || Date.now(),
+        inClinicOrder: existingPatient.inClinicOrder || (maxOrder + 1),
         lastVisit: todayDate,
         treatmentType: treatmentType || existingPatient.treatmentType || 'General Care'
       };
@@ -772,6 +842,8 @@ export function App() {
             userRole={userRole}
             doctorProfile={doctorProfile}
             activePatient={activePatient}
+            activeClinic={activeClinic}
+            onUpdateActiveClinic={handleUpdateActiveClinic}
             onLogout={handleLogout}
             onAddPatient={handleOpenNewPatient}
             onScheduleVisit={() => handleOpenScheduleVisit(activePatient)}
@@ -790,6 +862,8 @@ export function App() {
                       patients={patients}
                       clinics={clinics}
                       doctorProfile={doctorProfile}
+                      activeClinic={activeClinic}
+                      onUpdateActiveClinic={handleUpdateActiveClinic}
                       completedPatientIds={completedQueueIds}
                       onTogglePatientCompleted={handleTogglePatientCompleted}
                       onToggleInClinic={handleToggleInClinic}
@@ -942,6 +1016,7 @@ export function App() {
         }}
         onAddPatient={handleSavePatient}
         existingPatients={patients}
+        activeClinic={activeClinic}
         onSelectExistingPatient={handleSelectExistingPatientToQueue}
         initialPatient={editingPatient}
       />
@@ -960,8 +1035,20 @@ export function App() {
         }}
         patients={patients}
         clinics={clinics}
+        activeClinic={activeClinic}
         selectedPatient={scheduleTargetPatient || activePatient}
         onSchedule={handleConfirmScheduleVisit}
+      />
+
+      <SelectClinicModal
+        isOpen={isSelectClinicOpen && isAuthenticated && userRole === 'doctor'}
+        onClose={() => setIsSelectClinicOpen(false)}
+        doctorProfile={doctorProfile}
+        clinics={clinics}
+        onSelectClinic={(chosenClinic) => {
+          handleUpdateActiveClinic(chosenClinic);
+          setIsSelectClinicOpen(false);
+        }}
       />
     </div>
   );

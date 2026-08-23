@@ -15,6 +15,7 @@ interface ScheduleVisitModalProps {
   patients: Patient[];
   clinics?: ClinicRoom[];
   selectedPatient?: Patient | null;
+  activeClinic?: string;
   onSchedule?: (
     patientId: string,
     visitDate: string,
@@ -40,6 +41,7 @@ export const ScheduleVisitModal: React.FC<ScheduleVisitModalProps> = ({
   patients,
   clinics = [],
   selectedPatient,
+  activeClinic,
   onSchedule,
   onScheduleVisit,
   preselectedPatientId
@@ -69,16 +71,23 @@ export const ScheduleVisitModal: React.FC<ScheduleVisitModalProps> = ({
 
   // Dynamic default clinic
   const defaultClinicName = useMemo(() => {
+    if (activeClinic) return activeClinic;
     if (clinics && clinics.length > 0) {
       const occupied = clinics.find((c) => c.status === 'occupied' && c.doctorName);
       if (occupied) return occupied.name;
       return clinics[0].name;
     }
     return 'Clinic 1';
-  }, [clinics]);
+  }, [clinics, activeClinic]);
 
-  const [clinicRoom, setClinicRoom] = useState(defaultClinicName);
+  const [clinicRoom, setClinicRoom] = useState(activeClinic || defaultClinicName);
   const [notes, setNotes] = useState('Check healing progress, seat final prosthesis, and oral hygiene check.');
+
+  useEffect(() => {
+    if (activeClinic) {
+      setClinicRoom(activeClinic);
+    }
+  }, [activeClinic, isOpen]);
 
   useEffect(() => {
     if (selectedPatient?.id) {

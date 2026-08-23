@@ -16,7 +16,7 @@ export const DOCTOR_CREDENTIALS: Record<string, { pass: string; docId: string }>
 interface UnifiedLoginProps {
   patients?: Patient[];
   doctors?: DoctorProfile[];
-  onDoctorLoginSuccess: (doctorId?: string) => void;
+  onDoctorLoginSuccess: (doctorId?: string, assignedClinic?: string) => void;
   onPatientLoginSuccess: (patientId: string) => void;
 }
 
@@ -30,6 +30,7 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
 
   const [identifier, setIdentifier] = useState('DOC-101');
   const [password, setPassword] = useState('clinicPass2026');
+  const [selectedClinic, setSelectedClinic] = useState<string>('Clinic 1');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -92,7 +93,7 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
     return 'unknown';
   }, [cleanInput, digitsOnly, patients, doctors]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
 
@@ -115,6 +116,24 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
     }
 
     const trimmedPassword = password.trim();
+
+    // 0. Primary Check: Supabase app_users table (RBAC: 0 = Patient, 1 = Doctor)
+    try {
+      const { supabaseService } = await import('../services/supabaseService');
+      const authRes = await supabaseService.authenticateUser(cleanInput, trimmedPassword);
+      if (authRes.success && authRes.refId !== undefined) {
+        if (authRes.role === 1) {
+          onDoctorLoginSuccess(authRes.refId, selectedClinic);
+          return;
+        } else {
+          onPatientLoginSuccess(authRes.refId);
+          return;
+        }
+      }
+    } catch (cloudErr) {
+      console.info('Cloud auth check fallback to local check:', cloudErr);
+    }
+
 
     // 1. Check if input matches any Doctor
     const matchedDoctor = doctors.find((d) => {
@@ -148,7 +167,7 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
         return;
       }
 
-      onDoctorLoginSuccess(matchedDoctor.id);
+      onDoctorLoginSuccess(matchedDoctor.id, selectedClinic);
       return;
     }
 
@@ -162,13 +181,19 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
     );
 
     if (matchedPatient) {
-      // STRICT PASSWORD CHECK FOR PATIENTS
-      const validPatientPasswords = ['patient2026', 'patient123', 'clinicPass2026', '123456'];
-      if (!validPatientPasswords.includes(trimmedPassword)) {
+      // STRICT PASSWORD CHECK FOR PATIENTS (Password is the Patient's ID or Phone)
+      const isPasswordValid =
+        trimmedPassword === matchedPatient.id ||
+        trimmedPassword.toLowerCase() === matchedPatient.id.toLowerCase() ||
+        trimmedPassword === matchedPatient.phone ||
+        (digitsOnly.length > 0 && trimmedPassword.replace(/\D/g, '') === matchedPatient.phone.replace(/\D/g, '')) ||
+        ['patient2026', 'patient123', 'clinicPass2026', '123456'].includes(trimmedPassword);
+
+      if (!isPasswordValid) {
         setErrorMsg(
           isRTL
-            ? 'كلمة المرور غير صحيحة لملف المريض. كلمة المرور الصحيحة للتجربة هي: patient2026'
-            : 'Incorrect password for patient portal. Valid password is: patient2026'
+            ? `كلمة المرور غير صحيحة لملف المريض. كلمة المرور هي رقم المريض (ID): #${matchedPatient.id}`
+            : `Incorrect password for patient portal. Valid password is Patient ID: #${matchedPatient.id}`
         );
         return;
       }
@@ -180,12 +205,16 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
     // 3. Fallback check for newly registered patients by exact ID
     const anyPatientById = patients.find((p) => p.id === identifier.trim());
     if (anyPatientById) {
-      const validPatientPasswords = ['patient2026', 'patient123', 'clinicPass2026', '123456'];
-      if (!validPatientPasswords.includes(trimmedPassword)) {
+      const isPasswordValid =
+        trimmedPassword === anyPatientById.id ||
+        trimmedPassword.toLowerCase() === anyPatientById.id.toLowerCase() ||
+        ['patient2026', 'patient123', 'clinicPass2026', '123456'].includes(trimmedPassword);
+
+      if (!isPasswordValid) {
         setErrorMsg(
           isRTL
-            ? 'كلمة المرور غير صحيحة لملف المريض.'
-            : 'Incorrect password for patient portal.'
+            ? `كلمة المرور غير صحيحة لملف المريض. كلمة المرور هي رقم المريض (ID): #${anyPatientById.id}`
+            : `Incorrect password for patient portal. Valid password is Patient ID: #${anyPatientById.id}`
         );
         return;
       }
@@ -209,11 +238,12 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
     setErrorMsg(null);
   };
 
-  const handleAutofillPatient = (patientId: string) => {
-    setIdentifier(patientId);
-    setPassword('patient2026');
+  const handleAutofillPatient = (phone: string, patientId: string) => {
+    setIdentifier(phone);
+    setPassword(patientId);
     setErrorMsg(null);
   };
+
 
   return (
     <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200 p-7 sm:p-9 animate-in fade-in zoom-in-95 duration-200 text-slate-900">
@@ -336,12 +366,9 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
           id="unified-login-submit-btn"
         >
           <span>
-            {detectedRole === 'doctor'
-              ? (isRTL ? "دخول الطبيب إلى العيادة" : "Log in as Doctor")
-              : detectedRole === 'patient'
-              ? (isRTL ? "دخول المريض للملف الطبي" : "Log in to Patient Portal")
-              : t('sign_in_button')}
+            {isRTL ? "دخول" : "Log In"}
           </span>
+
           <span className="material-symbols-outlined text-[18px]">
             {isRTL ? 'arrow_back' : 'arrow_forward'}
           </span>
@@ -388,14 +415,14 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
         {/* Patients Selector */}
         <div className="space-y-1.5">
           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-            {isRTL ? "ملفات المرضى:" : "Patient Portals:"}
+            {isRTL ? "ملفات المرضى (اليوزر = الهاتف ، الباسورد = ID):" : "Patient Portals (User = Phone, Pass = ID):"}
           </span>
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
-              onClick={() => handleAutofillPatient('849201')}
+              onClick={() => handleAutofillPatient('+20 100 849 2010', '849201')}
               className={`p-2.5 rounded-xl border text-start transition-all cursor-pointer flex items-center gap-2 ${
-                cleanInput === '849201'
+                cleanInput.includes('849201') || cleanInput.includes('849')
                   ? 'bg-emerald-50 border-emerald-600 text-emerald-800 font-bold'
                   : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
               }`}
@@ -405,15 +432,15 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
               </div>
               <div className="overflow-hidden">
                 <p className="text-xs font-bold truncate">Mohamed Ali</p>
-                <p className="text-[9px] text-slate-500 font-mono">#849201</p>
+                <p className="text-[9px] text-slate-500 font-mono">01008492010 • #849201</p>
               </div>
             </button>
 
             <button
               type="button"
-              onClick={() => handleAutofillPatient('102943')}
+              onClick={() => handleAutofillPatient('+20 101 987 6543', '102943')}
               className={`p-2.5 rounded-xl border text-start transition-all cursor-pointer flex items-center gap-2 ${
-                cleanInput === '102943'
+                cleanInput.includes('102943') || cleanInput.includes('987')
                   ? 'bg-emerald-50 border-emerald-600 text-emerald-800 font-bold'
                   : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
               }`}
@@ -423,11 +450,12 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
               </div>
               <div className="overflow-hidden">
                 <p className="text-xs font-bold truncate">Alice Smith</p>
-                <p className="text-[9px] text-slate-500 font-mono">#102943</p>
+                <p className="text-[9px] text-slate-500 font-mono">01019876543 • #102943</p>
               </div>
             </button>
           </div>
         </div>
+
       </div>
     </div>
   );

@@ -35,6 +35,27 @@ CREATE TABLE IF NOT EXISTS public.patients (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
+-- Ensure all columns exist on patients if table was created previously with fewer columns
+ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS initials TEXT;
+ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS age INTEGER DEFAULT 30;
+ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS gender TEXT DEFAULT 'Male';
+ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS birth_date TEXT;
+ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS avatar TEXT;
+ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS last_visit TEXT;
+ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS next_visit TEXT;
+ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS next_visit_time TEXT;
+ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS attending_doctor TEXT;
+ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS attending_clinic TEXT;
+ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS medical_notes TEXT;
+ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS treatment_type TEXT;
+ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS in_clinic BOOLEAN DEFAULT false;
+ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS in_clinic_time TEXT;
+ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS teeth JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS visits JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS images JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now());
+
 -- B. Doctors Table
 CREATE TABLE IF NOT EXISTS public.doctors (
     id TEXT PRIMARY KEY,
@@ -48,6 +69,12 @@ CREATE TABLE IF NOT EXISTS public.doctors (
     bio TEXT,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
+ALTER TABLE public.doctors ADD COLUMN IF NOT EXISTS avatar TEXT;
+ALTER TABLE public.doctors ADD COLUMN IF NOT EXISTS assigned_clinic TEXT;
+ALTER TABLE public.doctors ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE public.doctors ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE public.doctors ADD COLUMN IF NOT EXISTS consultation_fee NUMERIC DEFAULT 150;
+ALTER TABLE public.doctors ADD COLUMN IF NOT EXISTS bio TEXT;
 
 -- C. Clinics Table
 CREATE TABLE IF NOT EXISTS public.clinics (
@@ -82,6 +109,17 @@ CREATE TABLE IF NOT EXISTS public.clinic_queue (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
+-- F. Unified App Users Table (RBAC Authentication: role 0 = Patient, 1 = Doctor)
+CREATE TABLE IF NOT EXISTS public.app_users (
+    id TEXT PRIMARY KEY,
+    username TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    role INTEGER NOT NULL DEFAULT 0, -- 0: Patient, 1: Doctor/Staff
+    ref_id TEXT NOT NULL, -- ID in patients or doctors table
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+
 -- ==========================================
 -- 2. Enable Row Level Security (RLS) & Realtime
 -- ==========================================
@@ -90,6 +128,7 @@ ALTER TABLE public.doctors ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.clinics ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.doctor_profile ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.clinic_queue ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.app_users ENABLE ROW LEVEL SECURITY;
 
 DO $$ 
 BEGIN
@@ -98,6 +137,7 @@ BEGIN
     DROP POLICY IF EXISTS "Allow public read-write for clinics" ON public.clinics;
     DROP POLICY IF EXISTS "Allow public read-write for doctor_profile" ON public.doctor_profile;
     DROP POLICY IF EXISTS "Allow public read-write for clinic_queue" ON public.clinic_queue;
+    DROP POLICY IF EXISTS "Allow public read-write for app_users" ON public.app_users;
 END $$;
 
 CREATE POLICY "Allow public read-write for patients" ON public.patients FOR ALL USING (true) WITH CHECK (true);
@@ -105,13 +145,36 @@ CREATE POLICY "Allow public read-write for doctors" ON public.doctors FOR ALL US
 CREATE POLICY "Allow public read-write for clinics" ON public.clinics FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public read-write for doctor_profile" ON public.doctor_profile FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public read-write for clinic_queue" ON public.clinic_queue FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public read-write for app_users" ON public.app_users FOR ALL USING (true) WITH CHECK (true);
 
--- Realtime Publication
-ALTER PUBLICATION supabase_realtime ADD TABLE public.patients;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.doctors;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.clinics;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.doctor_profile;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.clinic_queue;
+-- Realtime Publication (wrapped safely to prevent 'relation already exists' 42P07 error)
+DO $$ 
+BEGIN
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.patients;
+  EXCEPTION WHEN OTHERS THEN NULL;
+  END;
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.doctors;
+  EXCEPTION WHEN OTHERS THEN NULL;
+  END;
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.clinics;
+  EXCEPTION WHEN OTHERS THEN NULL;
+  END;
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.doctor_profile;
+  EXCEPTION WHEN OTHERS THEN NULL;
+  END;
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.clinic_queue;
+  EXCEPTION WHEN OTHERS THEN NULL;
+  END;
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.app_users;
+  EXCEPTION WHEN OTHERS THEN NULL;
+  END;
+END $$;
 
 
 -- ============================================================================
@@ -339,3 +402,16 @@ ON CONFLICT (id) DO UPDATE SET
   teeth = EXCLUDED.teeth,
   visits = EXCLUDED.visits,
   images = EXCLUDED.images;
+
+-- Seed Initial User Accounts (Patients: password = patient ID, Doctors: password = clinicPass2026)
+INSERT INTO public.app_users (id, username, password, role, ref_id)
+VALUES
+  ('usr-pat-01', '+20 100 849 2010', '849201', 0, '849201'),
+  ('usr-pat-02', '+20 101 987 6543', '102943', 0, '102943'),
+  ('usr-pat-03', '+20 102 222 3333', '102964', 0, '102964'),
+  ('usr-doc-01', 'DOC-101', 'clinicPass2026', 1, 'doc-01'),
+  ('usr-doc-02', 'DOC-102', 'clinicPass2026', 1, 'doc-02'),
+  ('usr-doc-03', 'DOC-103', 'clinicPass2026', 1, 'doc-03')
+ON CONFLICT (username) DO UPDATE SET
+  password = EXCLUDED.password,
+  ref_id = EXCLUDED.ref_id;

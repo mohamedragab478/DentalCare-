@@ -384,6 +384,86 @@ export const supabaseService = {
     }
   },
 
+  // ----------------- UNIFIED AUTHENTICATION (RBAC) -----------------
+  async authenticateUser(identifier: string, pass: string): Promise<{ success: boolean; role?: number; refId?: string; error?: string }> {
+    try {
+      const cleanUser = identifier.trim().toLowerCase();
+      const rawUser = identifier.trim();
+      const digitsOnly = identifier.replace(/\D/g, '');
+
+      let query = supabase.from('app_users').select('*');
+      if (digitsOnly.length >= 4) {
+        query = query.or(`username.eq.${cleanUser},username.eq.${rawUser},username.ilike.%${digitsOnly}%`);
+      } else {
+        query = query.or(`username.eq.${cleanUser},username.eq.${rawUser}`);
+      }
+
+      const { data, error } = await query.limit(5);
+
+      if (error || !data || data.length === 0) {
+        return { success: false, error: 'User not found' };
+      }
+
+      const matchedUser = data.find((u: any) => u.password === pass.trim() || u.ref_id === pass.trim());
+      if (matchedUser) {
+        return {
+          success: true,
+          role: Number(matchedUser.role), // 0: Patient, 1: Doctor
+          refId: String(matchedUser.ref_id)
+        };
+      }
+
+      const firstUser = data[0];
+      if (firstUser.password !== pass.trim()) {
+        return { success: false, error: 'Incorrect password' };
+      }
+
+      return {
+        success: true,
+        role: Number(firstUser.role),
+        refId: String(firstUser.ref_id)
+      };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  async registerPatientUserAccount(phone: string, patientId: string): Promise<boolean> {
+    try {
+      const cleanDigits = phone.replace(/\D/g, '');
+      const rawPhone = phone.trim();
+
+      const userRecords = [
+        {
+          id: `u-pat-${patientId}-raw`,
+          username: rawPhone,
+          password: patientId,
+          role: 0,
+          ref_id: patientId
+        }
+      ];
+
+      if (cleanDigits) {
+        userRecords.push({
+          id: `u-pat-${patientId}-digits`,
+          username: cleanDigits,
+          password: patientId,
+          role: 0,
+          ref_id: patientId
+        });
+      }
+
+      await supabase.from('app_users').upsert(userRecords, { onConflict: 'id' });
+      return true;
+    } catch (err) {
+      console.warn('Error registering patient account to app_users:', err);
+      return false;
+    }
+  },
+
+
+
+
   // ----------------- REALTIME SUBSCRIPTION -----------------
   subscribeToCloudChanges(callbacks: {
     onPatientsChange?: (patients: Patient[]) => void;

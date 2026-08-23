@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Patient, ClinicRoom, DoctorProfile } from '../types';
 import { useAppThemeLanguage } from '../context/ThemeLanguageContext';
 import { getAppointmentCountdown, formatDateArabic } from '../utils/dateUtils';
@@ -7,6 +7,8 @@ interface DoctorDashboardProps {
   patients: Patient[];
   clinics: ClinicRoom[];
   doctorProfile?: DoctorProfile;
+  activeClinic?: string;
+  onUpdateActiveClinic?: (clinic: string) => void;
   completedPatientIds?: string[];
   onTogglePatientCompleted?: (patientId: string) => void;
   onToggleInClinic?: (patientId: string) => void;
@@ -24,6 +26,8 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
   patients,
   clinics,
   doctorProfile,
+  activeClinic,
+  onUpdateActiveClinic,
   completedPatientIds = [],
   onTogglePatientCompleted,
   onToggleInClinic,
@@ -40,6 +44,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
 
   const [internalCompletedIds, setInternalCompletedIds] = useState<string[]>(['849202']);
   const [visitFilter, setVisitFilter] = useState<'All' | 'Completed' | 'Scheduled'>('All');
+  const [queueClinicFilter, setQueueClinicFilter] = useState<'ActiveClinic' | 'All'>('ActiveClinic');
   const [visitToDelete, setVisitToDelete] = useState<{ patientId: string; visitId: string; patientName: string; procedure: string } | null>(null);
   
   // Drag and Drop reordering state
@@ -109,9 +114,21 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
   const currentAvatar = doctorProfile?.avatar || defaultAvatar;
   const currentDoctorName = doctorProfile?.name || 'Dr. Ahmed';
   const currentSpecialty = doctorProfile?.specialty || (isRTL ? 'استشاري التركيبات وزراعة الأسنان' : 'Prosthodontist & Implant Specialist');
-  const currentClinicName = doctorProfile?.assignedClinic
-    ? (isRTL ? doctorProfile.assignedClinic.replace(/Clinic\s*(\d+)/i, 'العيادة $1') : doctorProfile.assignedClinic)
-    : (isRTL ? 'خارج العيادة (غير مسكن)' : 'Off-duty (Roaming)');
+  const effectiveClinic = activeClinic || doctorProfile?.assignedClinic || 'Clinic 1';
+
+  const displayedQueuePatients = useMemo(() => {
+    const filtered = patients.filter((p) => {
+      if (queueClinicFilter === 'All') return true;
+      return !p.attendingClinic || p.attendingClinic === effectiveClinic;
+    });
+
+    const inClinicList = filtered.filter((p) => p.inClinic);
+    inClinicList.sort((a, b) => (a.inClinicOrder || 999999) - (b.inClinicOrder || 999999));
+
+    const notInClinicList = filtered.filter((p) => !p.inClinic);
+
+    return [...inClinicList, ...notInClinicList];
+  }, [patients, queueClinicFilter, effectiveClinic]);
 
   return (
     <div className="max-w-7xl mx-auto w-full space-y-8 animate-in fade-in duration-200 transition-colors">
@@ -122,7 +139,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
             <span>{t('welcome_back')}, {currentDoctorName}</span>
           </h1>
           <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mt-1">
-            {t('clinical_overview')} • {currentSpecialty} • <strong className="text-slate-800 dark:text-slate-200">{currentClinicName}</strong>
+            {t('clinical_overview')} • {currentSpecialty} • <strong className="text-[#006194] dark:text-[#00a3e0]">{effectiveClinic.replace(/Clinic\s*(\d+)/i, 'العيادة $1')}</strong>
           </p>
         </div>
 
@@ -155,21 +172,21 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Patient Queue & Management (8 cols) */}
         <div className="lg:col-span-8 bg-white dark:bg-slate-900 rounded-3xl border border-[#e2e8f0] dark:border-slate-800 p-6 shadow-xs">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-4 mb-5">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-4 mb-4">
             <div>
               <div className="flex items-center gap-2.5 flex-wrap">
                 <h2 className="font-headline font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
                   <span className="material-symbols-outlined text-[#006194] dark:text-[#00a3e0]">format_list_numbered</span>
                   <span>{t('appointment_queue')}</span>
                 </h2>
-                {patients.filter(p => p.inClinic).length > 0 && (
+                {displayedQueuePatients.filter(p => p.inClinic).length > 0 && (
                   <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold border border-emerald-300 dark:border-emerald-800 flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                    <span>{patients.filter(p => p.inClinic).length} {t('in_clinic')}</span>
+                    <span>{displayedQueuePatients.filter(p => p.inClinic).length} {t('in_clinic')}</span>
                   </span>
                 )}
                 <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold">
-                  {finishedIds.length}/{patients.length} {t('finished')}
+                  {finishedIds.filter(id => displayedQueuePatients.some(p => p.id === id)).length}/{displayedQueuePatients.length} {t('finished')}
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5">
@@ -197,14 +214,47 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
             </div>
           </div>
 
-          <div className="space-y-3">
-            {patients.map((p, idx) => {
-              const isFinished = finishedIds.includes(p.id);
-              const countdown = getAppointmentCountdown(p.nextVisit, p.nextVisitTime);
-              const isBeingDragged = draggedIndex === idx;
-              const isTargetDrop = dragOverIndex === idx && draggedIndex !== idx;
+          {/* Clinic Queue Filter Pills */}
+          <div className="flex items-center gap-2 mb-4 bg-slate-50 dark:bg-slate-800 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs font-bold w-fit">
+            <button
+              type="button"
+              onClick={() => setQueueClinicFilter('ActiveClinic')}
+              className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+                queueClinicFilter === 'ActiveClinic'
+                  ? 'bg-[#006194] text-white shadow-2xs'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[15px]">medical_services</span>
+              <span>{isRTL ? `طابور ${effectiveClinic.replace(/Clinic\s*(\d+)/i, 'العيادة $1')}` : `${effectiveClinic} Queue`}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setQueueClinicFilter('All')}
+              className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+                queueClinicFilter === 'All'
+                  ? 'bg-[#006194] text-white shadow-2xs'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[15px]">groups</span>
+              <span>{isRTL ? "كافة العيادات" : "All Clinics"}</span>
+            </button>
+          </div>
 
-              return (
+          <div className="space-y-3">
+            {displayedQueuePatients.length === 0 ? (
+              <div className="p-8 text-center bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs">
+                {isRTL ? `لا يوجد مرضى متواجدون بطابور ${effectiveClinic.replace(/Clinic\s*(\d+)/i, 'العيادة $1')} حالياً.` : `No patients in ${effectiveClinic} queue currently.`}
+              </div>
+            ) : (
+              displayedQueuePatients.map((p, idx) => {
+                const isFinished = finishedIds.includes(p.id);
+                const countdown = getAppointmentCountdown(p.nextVisit, p.nextVisitTime);
+                const isBeingDragged = draggedIndex === idx;
+                const isTargetDrop = dragOverIndex === idx && draggedIndex !== idx;
+
+                return (
                 <div
                   key={p.id}
                   draggable
@@ -365,7 +415,8 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                   </div>
                 </div>
               );
-            })}
+            })
+            )}
           </div>
         </div>
 

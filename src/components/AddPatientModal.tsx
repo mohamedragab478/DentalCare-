@@ -8,6 +8,7 @@ interface AddPatientModalProps {
   onAddPatient: (patient: Patient) => void;
   initialPatient?: Patient | null;
   existingPatients?: Patient[];
+  activeClinic?: string;
   onSelectExistingPatient?: (patient: Patient, treatmentType?: string) => void;
 }
 
@@ -17,12 +18,14 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
   onAddPatient,
   initialPatient,
   existingPatients = [],
+  activeClinic = 'Clinic 1',
   onSelectExistingPatient
 }) => {
   const { t, isRTL } = useAppThemeLanguage();
 
   // Mode tab: 'existing' or 'new'
-  const [activeTab, setActiveTab] = useState<'existing' | 'new'>('existing');
+  const [activeTab, setActiveTab] = useState<'existing' | 'new'>('new');
+  const [targetClinic, setTargetClinic] = useState<string>(activeClinic);
 
   // Tab 1 State: Existing Patient selection
   const [searchQuery, setSearchQuery] = useState('');
@@ -44,6 +47,7 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
   const isEditMode = Boolean(initialPatient);
 
   useEffect(() => {
+    setTargetClinic(activeClinic || 'Clinic 1');
     if (initialPatient) {
       setName(initialPatient.name || '');
       setAvatar(initialPatient.avatar || '');
@@ -51,6 +55,7 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
       setAge(initialPatient.age?.toString() || '30');
       setPhone(initialPatient.phone || '');
       setTreatmentType(initialPatient.treatmentType || 'Cleaning');
+      setTargetClinic(initialPatient.attendingClinic || activeClinic || 'Clinic 1');
       setMedicalNotes(initialPatient.medicalNotes || '');
       setPreviewNumericId(initialPatient.id);
       setCreatedCredentials(null);
@@ -68,12 +73,10 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
 
       if (existingPatients.length > 0) {
         setSelectedExistingId(existingPatients[0].id);
-        setActiveTab('existing');
-      } else {
-        setActiveTab('new');
       }
+      setActiveTab('new');
     }
-  }, [initialPatient, isOpen, existingPatients]);
+  }, [initialPatient, isOpen, existingPatients, activeClinic]);
 
   const filteredExistingPatients = useMemo(() => {
     if (!searchQuery.trim()) return existingPatients;
@@ -117,7 +120,10 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
   const handleAddExistingToQueue = () => {
     if (!selectedExistingPatient) return;
     if (onSelectExistingPatient) {
-      onSelectExistingPatient(selectedExistingPatient, existingTreatmentType);
+      onSelectExistingPatient(
+        { ...selectedExistingPatient, attendingClinic: targetClinic },
+        existingTreatmentType
+      );
     }
     onClose();
   };
@@ -146,6 +152,7 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
         gender,
         phone,
         treatmentType,
+        attendingClinic: targetClinic,
         medicalNotes
       };
       onAddPatient(updatedPatient);
@@ -163,6 +170,7 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
         phone,
         lastVisit: today,
         treatmentType,
+        attendingClinic: targetClinic,
         medicalNotes,
         inClinic: true,
         inClinicTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -171,6 +179,12 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
         images: []
       };
       onAddPatient(newPatient);
+
+      // Register patient account in Supabase app_users (Username = Phone, Password = Patient ID)
+      import('../services/supabaseService').then(({ supabaseService }) => {
+        supabaseService.registerPatientUserAccount(newPatient.phone, assignedId);
+      });
+
       setCreatedCredentials({
         id: assignedId,
         name: newPatient.name,
@@ -181,7 +195,7 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
 
   const handleCopyCredentials = () => {
     if (!createdCredentials) return;
-    const text = `DentalCare Patient Portal Credentials:\nPatient Name: ${createdCredentials.name}\nPatient Login ID: ${createdCredentials.id}\nRegistered Phone: ${createdCredentials.phone}`;
+    const text = `DentalCare Patient Portal Credentials:\nPatient Name: ${createdCredentials.name}\nUsername (Phone): ${createdCredentials.phone}\nPassword (Patient ID): ${createdCredentials.id}`;
     navigator.clipboard?.writeText(text);
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2500);
@@ -190,49 +204,68 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
   if (createdCredentials) {
     return (
       <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-        {/* Modal Box: ALWAYS WHITE as requested */}
+        {/* Modal Box: ALWAYS WHITE & Clinical Design */}
         <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 text-center space-y-6 text-slate-900">
-          <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full mx-auto flex items-center justify-center shadow-inner">
-            <span className="material-symbols-outlined text-3xl">how_to_reg</span>
+          <div className="w-16 h-16 bg-blue-50 text-[#006194] rounded-2xl mx-auto flex items-center justify-center border border-blue-100 shadow-2xs">
+            <span className="material-symbols-outlined text-3xl">badge</span>
           </div>
 
           <div>
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 mb-2">
-              <span className="material-symbols-outlined text-[13px]">lock</span>
-              <span>{isRTL ? "تم إنشاء الحساب المصرح بنجاح" : "Doctor Authorized Account Created"}</span>
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 mb-3">
+              <span className="material-symbols-outlined text-[14px]">check_circle</span>
+              <span>{isRTL ? "تم تسجل المريض وتخصيص الرقم التعريفي" : "Patient Registered Successfully"}</span>
             </span>
             <h2 className="font-headline font-bold text-2xl text-slate-900">
-              {isRTL ? "حساب المريض جاهز!" : "Patient Account Ready!"}
+              {isRTL ? "بطاقة المريض الجديد" : "New Patient Profile Created"}
             </h2>
             <p className="text-xs text-slate-500 mt-1">
-              {isRTL ? "تم تسجيل وتفعيل ملف المريض وإضافته لطابور اليوم بنجاح. يمكنك مشاركة بيانات الدخول مع المريض:" : "Patient profile registered and added to today's queue. Share credentials with patient:"}
+              {isRTL ? "بيانات المريض والمعرف الشخصي للدخول:" : "Patient identification and login details:"}
             </p>
           </div>
 
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-start space-y-3">
+          {/* Prominent Patient ID Banner */}
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center space-y-2">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+              {isRTL ? "كود / معرف المريض (Patient ID)" : "Patient ID Number"}
+            </span>
+            <div className="text-3xl font-mono font-bold text-[#006194] tracking-widest py-1">
+              #{createdCredentials.id}
+            </div>
+            <p className="text-[11px] text-slate-500">
+              {isRTL 
+                ? "ملاحظة: هذا الرقم التعريفي هو كلمة المرور الخاصة بالمريض عند تسجيل الدخول." 
+                : "Note: This ID acts as the patient's password to access the patient portal."}
+            </p>
+          </div>
+
+          {/* Patient Details List */}
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-start space-y-2.5">
             <div className="flex justify-between items-center border-b border-slate-200 pb-2">
               <span className="text-xs text-slate-500">{t('patient_name')}</span>
               <span className="font-bold text-sm text-slate-900">{createdCredentials.name}</span>
             </div>
             <div className="flex justify-between items-center border-b border-slate-200 pb-2">
-              <span className="text-xs text-slate-500">{isRTL ? "رقم ملف المريض للدخول" : "Patient Login ID"}</span>
-              <span className="font-mono font-bold text-sm text-[#006194] bg-blue-50 px-2 py-0.5 rounded">
-                #{createdCredentials.id}
+              <span className="text-xs text-slate-500">{isRTL ? "رقم الهاتف (اسم المستخدم)" : "Phone (Username)"}</span>
+              <span className="font-mono font-bold text-xs text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200">
+                {createdCredentials.phone}
               </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-xs text-slate-500">{t('phone')}</span>
-              <span className="font-mono text-xs text-slate-800">{createdCredentials.phone}</span>
+              <span className="text-xs text-slate-500">{isRTL ? "كلمة المرور للدخول" : "Portal Password"}</span>
+              <span className="font-mono font-bold text-xs text-[#006194] bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                {createdCredentials.id}
+              </span>
             </div>
           </div>
 
+          {/* Actions */}
           <div className="flex flex-col sm:flex-row gap-3">
             <button
               onClick={handleCopyCredentials}
               className="flex-1 py-3 px-4 rounded-xl border border-[#006194] text-[#006194] hover:bg-blue-50 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
             >
               <span className="material-symbols-outlined text-[18px]">{isCopied ? 'done' : 'content_copy'}</span>
-              <span>{isCopied ? (isRTL ? "تم النسخ!" : "Copied!") : (isRTL ? "نسخ البيانات" : "Copy Details")}</span>
+              <span>{isCopied ? (isRTL ? "تم النسخ!" : "Copied!") : (isRTL ? "نسخ بيانات المريض" : "Copy Credentials")}</span>
             </button>
             <button
               onClick={() => {
@@ -264,7 +297,7 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
             <p className="text-xs text-slate-500 mt-0.5">
               {isEditMode
                 ? (isRTL ? "تحديث السجلات والمعلومات الأساسية للمريض" : "Update patient clinical profile and contact details")
-                : (isRTL ? "اختر مريضاً مسجلاً من الداتا بيز أو قم بتسجيل مريض جديد" : "Select an existing patient from database or register a new patient")}
+                : (isRTL ? "قم بتسجيل مريض جديد أو اختر مريضاً مسجلاً بالعيادة" : "Register a new patient or select an existing clinic patient")}
             </p>
           </div>
           <button
@@ -288,7 +321,7 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
               }`}
             >
               <span className="material-symbols-outlined text-[17px]">folder_shared</span>
-              <span>{isRTL ? "مريض مسجل بالعيادة (من الداتا بيز)" : "Select Existing Patient"}</span>
+              <span>{isRTL ? "اختيار مريض مسجل بالعيادة" : "Select Existing Patient"}</span>
             </button>
             <button
               type="button"
@@ -387,6 +420,23 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
                 <option value="Root Canal">{t('root_canal_status')}</option>
                 <option value="Crown & Bridge">{t('crown_bridge')}</option>
                 <option value="Extraction">{t('extraction')}</option>
+              </select>
+            </div>
+
+            {/* Target Clinic Selector */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                {isRTL ? "العيادة المستهدفة للطابور" : "Target Clinic Suite"}
+              </label>
+              <select
+                value={targetClinic}
+                onChange={(e) => setTargetClinic(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-xs font-bold focus:outline-none focus:border-[#006194]"
+              >
+                <option value="Clinic 1">{isRTL ? "العيادة 1" : "Clinic 1"}</option>
+                <option value="Clinic 2">{isRTL ? "العيادة 2" : "Clinic 2"}</option>
+                <option value="Clinic 3">{isRTL ? "العيادة 3" : "Clinic 3"}</option>
+                <option value="Clinic 4">{isRTL ? "العيادة 4" : "Clinic 4"}</option>
               </select>
             </div>
 
@@ -572,6 +622,22 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
                 <option value="Crown & Bridge">{t('crown_bridge')}</option>
                 <option value="Extraction">{t('extraction')}</option>
                 <option value="General Care">{isRTL ? "كشف عام وفحص" : "General Care"}</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                {isRTL ? "العيادة المستهدفة للطابور" : "Target Clinic Suite"}
+              </label>
+              <select
+                value={targetClinic}
+                onChange={(e) => setTargetClinic(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-xs font-bold focus:outline-none focus:border-[#006194]"
+              >
+                <option value="Clinic 1">{isRTL ? "العيادة 1" : "Clinic 1"}</option>
+                <option value="Clinic 2">{isRTL ? "العيادة 2" : "Clinic 2"}</option>
+                <option value="Clinic 3">{isRTL ? "العيادة 3" : "Clinic 3"}</option>
+                <option value="Clinic 4">{isRTL ? "العيادة 4" : "Clinic 4"}</option>
               </select>
             </div>
 

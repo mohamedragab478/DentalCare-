@@ -131,6 +131,8 @@ export const INITIAL_PATIENTS: Patient[] = [
     treatmentType: 'Filling',
     inClinic: true,
     inClinicTime: '10:15 AM',
+    inClinicTimestamp: 1770000000000,
+    inClinicOrder: 1,
     medicalNotes: 'Mild dental anxiety. Patient responded well to gentle local numbing. Composite filling applied to tooth 26.',
     teeth: { ...DEFAULT_TEETH_MAP },
     visits: [
