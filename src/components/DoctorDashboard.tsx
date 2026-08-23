@@ -124,12 +124,30 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
 
     const inClinicList = filtered.filter((p) => p.inClinic);
     inClinicList.sort((a, b) => {
-      const orderA = a.inClinicOrder ?? 999999;
-      const orderB = b.inClinicOrder ?? 999999;
-      if (orderA !== orderB) return orderA - orderB;
-      const timeA = a.inClinicTimestamp || 0;
-      const timeB = b.inClinicTimestamp || 0;
-      return timeA - timeB;
+      // 1. Explicit inClinicOrder (1, 2, 3...)
+      const orderA = a.inClinicOrder;
+      const orderB = b.inClinicOrder;
+      if (typeof orderA === 'number' && typeof orderB === 'number' && orderA !== orderB) {
+        return orderA - orderB;
+      }
+      if (typeof orderA === 'number' && typeof orderB !== 'number') return -1;
+      if (typeof orderA !== 'number' && typeof orderB === 'number') return 1;
+
+      // 2. High-precision inClinicTimestamp
+      const timeA = Number(a.inClinicTimestamp) || 0;
+      const timeB = Number(b.inClinicTimestamp) || 0;
+      if (timeA > 0 && timeB > 0 && timeA !== timeB) {
+        return timeA - timeB;
+      }
+      if (timeA > 0 && timeB === 0) return -1;
+      if (timeA === 0 && timeB > 0) return 1;
+
+      // 3. Fallback to inClinicTime string (e.g. "10:15 AM")
+      if (a.inClinicTime && b.inClinicTime && a.inClinicTime !== b.inClinicTime) {
+        return a.inClinicTime.localeCompare(b.inClinicTime);
+      }
+
+      return 0;
     });
 
     const notInClinicList = filtered.filter((p) => !p.inClinic);

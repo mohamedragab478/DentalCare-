@@ -115,6 +115,8 @@ export const supabaseService = {
         treatment_type: p.treatmentType || null,
         in_clinic: Boolean(p.inClinic),
         in_clinic_time: p.inClinicTime || null,
+        in_clinic_order: p.inClinicOrder ?? null,
+        in_clinic_timestamp: p.inClinicTimestamp ?? null,
         teeth: p.teeth || {},
         visits: p.visits || [],
         images: p.images || [],
@@ -126,12 +128,31 @@ export const supabaseService = {
         .upsert(rows, { onConflict: 'id' });
 
       if (error) {
-        console.warn('Failed to upsert patients to Supabase:', error.message);
+        console.error('Supabase batch upsert error details:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
+
+        // If error is about missing optional columns, fallback without those columns
+        if (error.message?.includes('in_clinic_order') || error.message?.includes('in_clinic_timestamp') || error.message?.includes('column')) {
+          const fallbackRows = rows.map(({ in_clinic_order, in_clinic_timestamp, teeth, visits, images, ...rest }) => rest);
+          const { error: fallbackError } = await supabase
+            .from('patients')
+            .upsert(fallbackRows, { onConflict: 'id' });
+
+          if (fallbackError) {
+            console.error('Fallback batch upsert error:', fallbackError);
+            return false;
+          }
+          return true;
+        }
         return false;
       }
       return true;
     } catch (err) {
-      console.warn('Error syncing patients to Supabase:', err);
+      console.error('Error syncing patients to Supabase:', err);
       return false;
     }
   },
@@ -155,6 +176,8 @@ export const supabaseService = {
         treatment_type: patient.treatmentType || null,
         in_clinic: Boolean(patient.inClinic),
         in_clinic_time: patient.inClinicTime || null,
+        in_clinic_order: patient.inClinicOrder ?? null,
+        in_clinic_timestamp: patient.inClinicTimestamp ?? null,
         teeth: patient.teeth || {},
         visits: patient.visits || [],
         images: patient.images || [],
@@ -166,12 +189,30 @@ export const supabaseService = {
         .upsert(row, { onConflict: 'id' });
 
       if (error) {
-        console.warn('Failed to save patient to Supabase:', error.message);
+        console.error('Supabase single patient upsert error details:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
+
+        if (error.message?.includes('in_clinic_order') || error.message?.includes('in_clinic_timestamp') || error.message?.includes('column')) {
+          const { in_clinic_order, in_clinic_timestamp, teeth, visits, images, ...fallbackRow } = row;
+          const { error: fallbackError } = await supabase
+            .from('patients')
+            .upsert(fallbackRow, { onConflict: 'id' });
+
+          if (fallbackError) {
+            console.error('Fallback single upsert error:', fallbackError);
+            return false;
+          }
+          return true;
+        }
         return false;
       }
       return true;
     } catch (err) {
-      console.warn('Error saving patient to Supabase:', err);
+      console.error('Error saving patient to Supabase:', err);
       return false;
     }
   },
