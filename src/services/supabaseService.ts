@@ -54,7 +54,7 @@ export const supabaseService = {
         return null;
       }
 
-      if (data && data.length > 0) {
+      if (data) {
         const formatted: Patient[] = data.map((item: any) => {
           const patientName = item.name || item.full_name || item.fullname || item.patient_name || item.patientName || 'Patient';
           const patientPhone = item.phone || item.phone_number || item.phoneNumber || item.mobile || item.contact || '';
@@ -89,7 +89,7 @@ export const supabaseService = {
         return formatted;
       }
 
-      return null;
+      return [];
     } catch (err) {
       console.warn('Error fetching patients from Supabase:', err);
       return null;
@@ -98,6 +98,10 @@ export const supabaseService = {
 
   async syncPatientsToCloud(patients: Patient[]): Promise<boolean> {
     try {
+      if (!patients || patients.length === 0) {
+        return true;
+      }
+
       const rows = patients.map((p) => ({
         id: p.id,
         name: p.name,
@@ -213,6 +217,24 @@ export const supabaseService = {
       return true;
     } catch (err) {
       console.error('Error saving patient to Supabase:', err);
+      return false;
+    }
+  },
+
+  async deletePatientFromCloud(patientId: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('patients')
+        .delete()
+        .eq('id', patientId);
+
+      if (error) {
+        console.warn('Error deleting patient from Supabase:', error.message);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.warn('Error deleting patient from Supabase:', err);
       return false;
     }
   },
@@ -526,7 +548,7 @@ export const supabaseService = {
         { event: '*', schema: 'public', table: 'patients' },
         async () => {
           const freshPatients = await supabaseService.fetchPatients();
-          if (freshPatients && callbacks.onPatientsChange) {
+          if (freshPatients !== null && callbacks.onPatientsChange) {
             callbacks.onPatientsChange(freshPatients);
           }
         }
@@ -536,7 +558,7 @@ export const supabaseService = {
         { event: '*', schema: 'public', table: 'clinics' },
         async () => {
           const freshClinics = await supabaseService.fetchClinics();
-          if (freshClinics && callbacks.onClinicsChange) {
+          if (freshClinics !== null && callbacks.onClinicsChange) {
             callbacks.onClinicsChange(freshClinics);
           }
         }
@@ -546,7 +568,7 @@ export const supabaseService = {
         { event: '*', schema: 'public', table: 'doctor_profile' },
         async () => {
           const freshDoctor = await supabaseService.fetchDoctorProfile();
-          if (freshDoctor && callbacks.onDoctorChange) {
+          if (freshDoctor !== null && callbacks.onDoctorChange) {
             callbacks.onDoctorChange(freshDoctor);
           }
         }
@@ -556,7 +578,7 @@ export const supabaseService = {
         { event: '*', schema: 'public', table: 'clinic_queue' },
         async () => {
           const freshQueue = await supabaseService.fetchCompletedQueue();
-          if (freshQueue && callbacks.onQueueChange) {
+          if (freshQueue !== null && callbacks.onQueueChange) {
             callbacks.onQueueChange(freshQueue);
           }
         }

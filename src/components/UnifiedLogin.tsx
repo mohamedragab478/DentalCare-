@@ -28,8 +28,8 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
 }) => {
   const { t, isRTL } = useAppThemeLanguage();
 
-  const [identifier, setIdentifier] = useState('DOC-101');
-  const [password, setPassword] = useState('clinicPass2026');
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
   const [selectedClinic, setSelectedClinic] = useState<string>('Clinic 1');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
@@ -231,20 +231,6 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
     );
   };
 
-  // Fast autofill helpers for testing
-  const handleAutofillDoctor = (docId: string, customDocIdFormatted: string) => {
-    setIdentifier(customDocIdFormatted);
-    setPassword('clinicPass2026');
-    setErrorMsg(null);
-  };
-
-  const handleAutofillPatient = (phone: string, patientId: string) => {
-    setIdentifier(phone);
-    setPassword(patientId);
-    setErrorMsg(null);
-  };
-
-
   return (
     <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200 p-7 sm:p-9 animate-in fade-in zoom-in-95 duration-200 text-slate-900">
       {/* Header */}
@@ -258,28 +244,6 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
         <p className="text-xs text-slate-500 mt-1 font-medium">
           {t('sign_in_subtitle')}
         </p>
-
-        {/* Dynamic Detected Role Badge */}
-        <div className="mt-3 flex items-center justify-center">
-          {detectedRole === 'doctor' && (
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-1 rounded-full bg-blue-50 text-[#006194] border border-blue-200/80 animate-in fade-in">
-              <span className="material-symbols-outlined text-[15px]">stethoscope</span>
-              <span>{isRTL ? "تم التعرف على حساب الطبيب" : "Doctor Account Detected"}</span>
-            </span>
-          )}
-          {detectedRole === 'patient' && (
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80 animate-in fade-in">
-              <span className="material-symbols-outlined text-[15px]">person</span>
-              <span>{isRTL ? "تم التعرف على حساب المريض" : "Patient Account Detected"}</span>
-            </span>
-          )}
-          {detectedRole === 'unknown' && (
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
-              <span className="material-symbols-outlined text-[14px]">lock</span>
-              <span>{isRTL ? "التحقق الذكي من نوع الحساب" : "Smart Role-Based Authentication"}</span>
-            </span>
-          )}
-        </div>
       </div>
 
       {/* Error notification */}
@@ -374,89 +338,6 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
           </span>
         </button>
       </form>
-
-      {/* Quick Autofill / Demo Credentials Switcher */}
-      <div className="mt-6 pt-5 border-t border-slate-100">
-        <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider text-center mb-2.5">
-          {t('quick_test_accounts')}
-        </p>
-
-        {/* Doctors Selector */}
-        <div className="space-y-1.5 mb-2.5">
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-            {isRTL ? "أطباء المركز (اضغط لتعبئة البيانات الصحيحة):" : "Clinic Doctors (Click to autofill):"}
-          </span>
-          <div className="grid grid-cols-3 gap-1.5">
-            {doctors.map((doc, idx) => {
-              const docCode = `DOC-10${idx + 1}`;
-              const isSelected = cleanInput.includes(docCode.toLowerCase()) || cleanInput.includes(doc.id.toLowerCase());
-              return (
-                <button
-                  key={doc.id}
-                  type="button"
-                  onClick={() => handleAutofillDoctor(doc.id, docCode)}
-                  className={`p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center ${
-                    isSelected
-                      ? 'bg-blue-50 border-[#006194] text-[#006194] font-bold'
-                      : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-                  }`}
-                  title={doc.name}
-                >
-                  <span className="text-[11px] font-bold truncate max-w-full">
-                    {doc.name.split(' ')[1] || doc.name}
-                  </span>
-                  <span className="text-[9px] text-slate-500 font-mono">{docCode}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Patients Selector */}
-        <div className="space-y-1.5">
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-            {isRTL ? "ملفات المرضى (اليوزر = الهاتف ، الباسورد = ID):" : "Patient Portals (User = Phone, Pass = ID):"}
-          </span>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => handleAutofillPatient('+20 100 849 2010', '849201')}
-              className={`p-2.5 rounded-xl border text-start transition-all cursor-pointer flex items-center gap-2 ${
-                cleanInput.includes('849201') || cleanInput.includes('849')
-                  ? 'bg-emerald-50 border-emerald-600 text-emerald-800 font-bold'
-                  : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-              }`}
-            >
-              <div className="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[14px]">person</span>
-              </div>
-              <div className="overflow-hidden">
-                <p className="text-xs font-bold truncate">Mohamed Ali</p>
-                <p className="text-[9px] text-slate-500 font-mono">01008492010 • #849201</p>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleAutofillPatient('+20 101 987 6543', '102943')}
-              className={`p-2.5 rounded-xl border text-start transition-all cursor-pointer flex items-center gap-2 ${
-                cleanInput.includes('102943') || cleanInput.includes('987')
-                  ? 'bg-emerald-50 border-emerald-600 text-emerald-800 font-bold'
-                  : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-              }`}
-            >
-              <div className="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[14px]">person</span>
-              </div>
-              <div className="overflow-hidden">
-                <p className="text-xs font-bold truncate">Alice Smith</p>
-                <p className="text-[9px] text-slate-500 font-mono">01019876543 • #102943</p>
-              </div>
-            </button>
-          </div>
-        </div>
-
-      </div>
     </div>
   );
 };

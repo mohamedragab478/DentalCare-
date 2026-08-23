@@ -41,11 +41,11 @@ export const storage = {
   getPatients: (): Patient[] => {
     try {
       const data = localStorage.getItem(PATIENTS_KEY);
-      if (data) return JSON.parse(data);
+      if (data !== null) return JSON.parse(data);
     } catch (e) {
       console.warn('Failed to load patients from localStorage', e);
     }
-    return INITIAL_PATIENTS;
+    return [];
   },
 
   setPatients: (patients: Patient[]) => {

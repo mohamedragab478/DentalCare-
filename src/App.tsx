@@ -85,34 +85,14 @@ export function App() {
 
   // Initial cloud fetch & realtime cloud subscription on mount
   useEffect(() => {
-    const mergeWithLocal = (incoming: Patient[]): Patient[] => {
-      const local = storage.getPatients();
-      const localMap = new Map(local.map((p) => [p.id, p]));
-      return incoming.map((cp) => {
-        const lp = localMap.get(cp.id);
-        if (!lp) return cp;
-        return {
-          ...cp,
-          inClinicOrder: cp.inClinicOrder ?? (cp.inClinic ? lp.inClinicOrder : undefined),
-          inClinicTimestamp: cp.inClinicTimestamp ?? (cp.inClinic ? lp.inClinicTimestamp : undefined),
-          inClinicTime: cp.inClinicTime || (cp.inClinic ? lp.inClinicTime : undefined)
-        };
-      });
-    };
-
     // 1. Initial cloud fetch
     async function loadCloudData() {
       try {
         const cloudPatients = await supabaseService.fetchPatients();
-        if (cloudPatients && cloudPatients.length > 0) {
-          const merged = mergeWithLocal(cloudPatients);
-          lastSyncedPatientsRef.current = JSON.stringify(merged);
-          setPatients(merged);
-          storage.setPatients(merged);
-        } else {
-          // Push initial data to cloud so Supabase gets populated
-          const currentLocalPatients = storage.getPatients();
-          supabaseService.syncPatientsToCloud(currentLocalPatients);
+        if (cloudPatients !== null) {
+          lastSyncedPatientsRef.current = JSON.stringify(cloudPatients);
+          setPatients(cloudPatients);
+          storage.setPatients(cloudPatients);
         }
 
         const cloudClinics = await supabaseService.fetchClinics();
@@ -148,12 +128,11 @@ export function App() {
     // 2. Realtime cloud table subscriptions
     const unsubscribeCloud = supabaseService.subscribeToCloudChanges({
       onPatientsChange: (newPatients) => {
-        const merged = mergeWithLocal(newPatients);
-        const serialized = JSON.stringify(merged);
+        const serialized = JSON.stringify(newPatients);
         if (lastSyncedPatientsRef.current !== serialized) {
           lastSyncedPatientsRef.current = serialized;
-          setPatients(merged);
-          storage.setPatients(merged);
+          setPatients(newPatients);
+          storage.setPatients(newPatients);
         }
       },
       onClinicsChange: (newClinics) => {
