@@ -147,9 +147,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
-  const finishedIds = (completedPatientIds && Array.isArray(completedPatientIds) && completedPatientIds.length > 0)
-    ? completedPatientIds
-    : internalCompletedIds;
+  const finishedIds = completedPatientIds.length > 0 ? completedPatientIds : internalCompletedIds;
 
   const handleToggleFinished = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -215,7 +213,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
   const effectiveClinic = activeClinic || doctorProfile?.assignedClinic || 'Clinic 1';
 
   const displayedQueuePatients = useMemo(() => {
-    const filtered = (patients || []).filter((p) => {
+    const filtered = patients.filter((p) => {
       if (queueClinicFilter === 'All') return true;
       return !p.attendingClinic || p.attendingClinic === effectiveClinic;
     });
@@ -336,18 +334,18 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                   )}
                 </div>
 
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                <div className="flex flex-wrap items-stretch gap-1.5">
                   {/* Today / All Button */}
                   <button
                     type="button"
                     onClick={() => setSelectedDayKey('all')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 border cursor-pointer ${selectedDayKey === 'all'
-                        ? 'bg-[#006194] text-white border-[#006194] shadow-xs'
-                        : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-[#006194]'
-                      }`}
+                    className={`px-2.5 py-2 rounded-xl text-[11px] font-bold transition-all flex flex-col items-center justify-center gap-0.5 border cursor-pointer min-w-[70px] ${selectedDayKey === 'all'
+                      ? 'bg-[#006194] text-white border-[#006194]'
+                      : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-[#006194]'
+                    }`}
                   >
-                    <span>{isRTL ? "طابور اليوم" : "Today's Queue"}</span>
-                    <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${selectedDayKey === 'all' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}>
+                    <span>{isRTL ? "طابور اليوم" : "Today"}</span>
+                    <span className={`text-[10px] font-mono px-1.5 rounded-full ${selectedDayKey === 'all' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}>
                       {displayedQueuePatients.length}
                     </span>
                   </button>
@@ -362,12 +360,12 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                         key={day.key}
                         type="button"
                         onClick={() => setSelectedDayKey(day.key)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 border cursor-pointer ${isSelected
-                            ? 'bg-[#006194] text-white border-[#006194] shadow-xs'
-                            : day.isToday
-                              ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100'
-                              : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-[#006194]'
-                          }`}
+                        className={`px-2.5 py-2 rounded-xl text-[11px] font-bold transition-all flex flex-col items-center justify-center gap-0.5 border cursor-pointer min-w-[70px] ${isSelected
+                          ? 'bg-[#006194] text-white border-[#006194]'
+                          : day.isToday
+                            ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100'
+                            : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-[#006194]'
+                        }`}
                       >
                         <div className="flex items-center gap-1">
                           <span>{isRTL ? day.arName : day.enName}</span>
@@ -375,11 +373,11 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                             <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-emerald-500 animate-ping'}`} />
                           )}
                         </div>
-                        <span className={`text-[10px] font-mono opacity-80`}>
-                          ({day.dateDisplay})
+                        <span className={`text-[9px] font-mono opacity-70`}>
+                          {day.dateDisplay}
                         </span>
                         {count > 0 && (
-                          <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full ${isSelected ? 'bg-white/20 text-white' : 'bg-blue-100 dark:bg-blue-900 text-[#006194] dark:text-blue-200'}`}>
+                          <span className={`text-[9px] font-mono font-bold px-1.5 rounded-full ${isSelected ? 'bg-white/20 text-white' : 'bg-blue-100 dark:bg-blue-900 text-[#006194] dark:text-blue-200'}`}>
                             {count}
                           </span>
                         )}
