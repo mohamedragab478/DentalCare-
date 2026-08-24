@@ -47,7 +47,98 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
   const [isCompletedListOpen, setIsCompletedListOpen] = useState<boolean>(false);
   const [visitFilter, setVisitFilter] = useState<'All' | 'Completed' | 'Scheduled'>('All');
   const [queueClinicFilter, setQueueClinicFilter] = useState<'ActiveClinic' | 'All'>('ActiveClinic');
+  const [selectedDayKey, setSelectedDayKey] = useState<string>('all');
   const [visitToDelete, setVisitToDelete] = useState<{ patientId: string; visitId: string; patientName: string; procedure: string } | null>(null);
+
+  // 7 Days Weekday Filter Logic (Saturday -> Friday)
+  const weekDaysConfig = [
+    { key: 'sat', dayNum: 6, arName: 'السبت', enName: 'Saturday' },
+    { key: 'sun', dayNum: 0, arName: 'الأحد', enName: 'Sunday' },
+    { key: 'mon', dayNum: 1, arName: 'الاثنين', enName: 'Monday' },
+    { key: 'tue', dayNum: 2, arName: 'الثلاثاء', enName: 'Tuesday' },
+    { key: 'wed', dayNum: 3, arName: 'الأربعاء', enName: 'Wednesday' },
+    { key: 'thu', dayNum: 4, arName: 'الخميس', enName: 'Thursday' },
+    { key: 'fri', dayNum: 5, arName: 'الجمعة', enName: 'Friday' },
+  ];
+
+  const weekDaysWithDates = useMemo(() => {
+    const today = new Date();
+    const todayDayNum = today.getDay();
+
+    return weekDaysConfig.map((item) => {
+      const offset = (item.dayNum - todayDayNum + 7) % 7;
+      const targetDate = new Date(today);
+      targetDate.setDate(today.getDate() + offset);
+
+      const isToday = offset === 0;
+      const dayNumber = targetDate.getDate();
+      const monthName = targetDate.toLocaleDateString(isRTL ? 'ar-EG' : 'en-US', { month: 'short' });
+      const dateDisplay = isToday
+        ? (isRTL ? 'اليوم' : 'Today')
+        : `${dayNumber} ${monthName}`;
+
+      return {
+        ...item,
+        targetDate,
+        offset,
+        isToday,
+        dateDisplay
+      };
+    });
+  }, [isRTL]);
+
+  const isPatientMatchingDate = (patient: Patient, targetDate: Date) => {
+    if (!patient.nextVisit) return false;
+    const visitStr = patient.nextVisit.trim();
+    const today = new Date();
+
+    const isTodayTarget =
+      targetDate.getDate() === today.getDate() &&
+      targetDate.getMonth() === today.getMonth() &&
+      targetDate.getFullYear() === today.getFullYear();
+
+    if (isTodayTarget && (visitStr.toLowerCase() === 'today' || visitStr === 'اليوم')) {
+      return true;
+    }
+
+    const parsed = new Date(visitStr);
+    if (!isNaN(parsed.getTime())) {
+      return (
+        parsed.getDate() === targetDate.getDate() &&
+        parsed.getMonth() === targetDate.getMonth() &&
+        parsed.getFullYear() === targetDate.getFullYear()
+      );
+    }
+
+    return false;
+  };
+
+  const selectedDayPatients = useMemo(() => {
+    if (selectedDayKey === 'all') return [];
+
+    const selectedDayObj = weekDaysWithDates.find((d) => d.key === selectedDayKey);
+    if (!selectedDayObj) return [];
+
+    return patients.filter((p) => {
+      const matchesClinic = queueClinicFilter === 'All' || !p.attendingClinic || p.attendingClinic === effectiveClinic;
+      if (!matchesClinic) return false;
+      return isPatientMatchingDate(p, selectedDayObj.targetDate);
+    });
+  }, [patients, queueClinicFilter, effectiveClinic, selectedDayKey, weekDaysWithDates]);
+
+  const dayCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    const filteredForClinic = patients.filter((p) => {
+      if (queueClinicFilter === 'All') return true;
+      return !p.attendingClinic || p.attendingClinic === effectiveClinic;
+    });
+
+    weekDaysWithDates.forEach((d) => {
+      counts[d.key] = filteredForClinic.filter((p) => isPatientMatchingDate(p, d.targetDate)).length;
+    });
+
+    return counts;
+  }, [patients, queueClinicFilter, effectiveClinic, weekDaysWithDates]);
   
   // Drag and Drop reordering state
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -247,6 +338,80 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                 <span className="material-symbols-outlined text-[15px] text-[#006194] dark:text-[#00a3e0]">pan_tool</span>
                 <span>{t('drag_to_reorder')}</span>
               </p>
+
+              {/* 7 Days Weekday Filter Buttons Bar (السبت -> الجمعة) */}
+              <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[16px] text-[#006194] dark:text-[#00a3e0]">calendar_month</span>
+                    <span>{isRTL ? "مواعيد أيام الأسبوع (تصفية حسب اليوم):" : "Week Appointments (Filter by Day):"}</span>
+                  </span>
+                  {selectedDayKey !== 'all' && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDayKey('all')}
+                      className="text-[11px] font-bold text-[#006194] dark:text-[#00a3e0] hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">restart_alt</span>
+                      <span>{isRTL ? "الرجوع لمواعيد اليوم الإجمالية" : "Show Today's Queue"}</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                  {/* Today / All Button */}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDayKey('all')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 border cursor-pointer ${
+                      selectedDayKey === 'all'
+                        ? 'bg-[#006194] text-white border-[#006194] shadow-xs'
+                        : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-[#006194]'
+                    }`}
+                  >
+                    <span>{isRTL ? "طابور اليوم" : "Today's Queue"}</span>
+                    <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${selectedDayKey === 'all' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}>
+                      {activeQueuePatients.length}
+                    </span>
+                  </button>
+
+                  {/* 7 Weekday Buttons (السبت -> الجمعة) */}
+                  {weekDaysWithDates.map((day) => {
+                    const count = dayCounts[day.key] || 0;
+                    const isSelected = selectedDayKey === day.key;
+
+                    return (
+                      <button
+                        key={day.key}
+                        type="button"
+                        onClick={() => setSelectedDayKey(day.key)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 border cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#006194] text-white border-[#006194] shadow-xs'
+                            : day.isToday
+                            ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100'
+                            : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-[#006194]'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1">
+                          <span>{isRTL ? day.arName : day.enName}</span>
+                          {day.isToday && (
+                            <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-emerald-500 animate-ping'}`} />
+                          )}
+                        </div>
+                        <span className={`text-[10px] font-mono opacity-80`}>
+                          ({day.dateDisplay})
+                        </span>
+                        {count > 0 && (
+                          <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full ${isSelected ? 'bg-white/20 text-white' : 'bg-blue-100 dark:bg-blue-900 text-[#006194] dark:text-blue-200'}`}>
+                            {count}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               {onAddPatient && (
@@ -296,9 +461,110 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
             </button>
           </div>
 
-          {/* 1. Active Patients Queue */}
+          {/* 1. Active Patients Queue or Selected Day Filtered Patients */}
           <div className="space-y-3">
-            {activeQueuePatients.length === 0 ? (
+            {selectedDayKey !== 'all' ? (
+              /* Specific Day Filter Mode */
+              selectedDayPatients.length === 0 ? (
+                <div className="p-8 text-center bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs space-y-3">
+                  <span className="material-symbols-outlined text-3xl text-slate-400 dark:text-slate-500">event_busy</span>
+                  <p className="font-semibold text-slate-700 dark:text-slate-300">
+                    {isRTL
+                      ? `لا توجد مواعيد مسجلة ليوم (${weekDaysWithDates.find(d => d.key === selectedDayKey)?.arName}) الموافق (${weekDaysWithDates.find(d => d.key === selectedDayKey)?.dateDisplay}).`
+                      : `No registered appointments for ${weekDaysWithDates.find(d => d.key === selectedDayKey)?.enName} (${weekDaysWithDates.find(d => d.key === selectedDayKey)?.dateDisplay}).`}
+                  </p>
+                  {onScheduleVisit && (
+                    <button
+                      type="button"
+                      onClick={() => onScheduleVisit()}
+                      className="inline-flex items-center gap-1.5 bg-[#006194] hover:bg-[#004b73] text-white px-3.5 py-1.5 rounded-xl font-bold text-xs cursor-pointer shadow-xs"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">calendar_add_on</span>
+                      <span>{isRTL ? "إضافة موعد جديد لهذا اليوم" : "Schedule New Appointment"}</span>
+                    </button>
+                  )}
+                </div>
+              ) : (
+                selectedDayPatients.map((p, idx) => {
+                  const countdown = getAppointmentCountdown(p.nextVisit, p.nextVisitTime);
+
+                  return (
+                    <div
+                      key={p.id}
+                      className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-[#f8fafc] dark:bg-slate-800/60 hover:bg-white dark:hover:bg-slate-800 transition-all flex flex-col xl:flex-row xl:items-center justify-between gap-4"
+                    >
+                      <div className="flex items-center gap-3.5 flex-1 min-w-0">
+                        {/* Index Number Badge */}
+                        <div className="flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 shrink-0">
+                          <span className="text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300">
+                            #{idx + 1}
+                          </span>
+                        </div>
+
+                        {/* Patient Avatar */}
+                        <div className="relative shrink-0">
+                          {p.avatar ? (
+                            <img src={p.avatar} alt={p.name} className="w-11 h-11 rounded-2xl object-cover border border-slate-200 dark:border-slate-700 shadow-2xs" />
+                          ) : (
+                            <div className="w-11 h-11 rounded-2xl font-bold text-xs flex items-center justify-center shadow-2xs bg-[#dae2fd] text-[#006194] dark:bg-blue-950 dark:text-blue-300">
+                              {p.initials}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Details */}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-headline font-bold text-sm sm:text-base text-slate-900 dark:text-white">
+                              {p.name}
+                            </span>
+                            <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">#{p.id}</span>
+                          </div>
+
+                          <div className="flex items-center gap-2 flex-wrap text-xs text-slate-500 dark:text-slate-400 mt-1">
+                            <span>{p.treatmentType || (isRTL ? 'كشف ومتابعة دورية' : 'Routine Consultation')} • {isRTL ? `العمر ${p.age} سنة` : `Age ${p.age}`}</span>
+                            {p.nextVisit && (
+                              <span className="inline-flex items-center gap-1 font-bold text-[#006194] dark:text-[#00a3e0] bg-blue-50 dark:bg-blue-950/80 px-2 py-0.5 rounded-md border border-blue-100 dark:border-blue-900/50">
+                                <span className="material-symbols-outlined text-[13px]">event</span>
+                                <span>{p.nextVisit}</span>
+                                {p.nextVisitTime && <span>({p.nextVisitTime})</span>}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Actions Toolbar for Specific Selected Day: ONLY "فتح الملف" and "تحديد ميعاد" */}
+                      <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 self-start xl:self-center shrink-0 w-full xl:w-auto pt-2 xl:pt-0 border-t xl:border-t-0 border-slate-100 dark:border-slate-800">
+                        {/* 1. Schedule Visit Button */}
+                        {onScheduleVisit && (
+                          <button
+                            type="button"
+                            onClick={() => onScheduleVisit(p)}
+                            className="flex-1 sm:flex-none px-3.5 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-[#006194] dark:text-[#00a3e0] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 border border-blue-100 dark:border-slate-700 active:scale-95 shrink-0"
+                            title={isRTL ? "تحديد موعد جديد" : "Schedule Visit"}
+                          >
+                            <span className="material-symbols-outlined text-[15px]">calendar_month</span>
+                            <span>{isRTL ? "تحديد ميعاد" : "Schedule Visit"}</span>
+                          </button>
+                        )}
+
+                        {/* 2. Open Chart Button */}
+                        <button
+                          type="button"
+                          onClick={() => onSelectPatient(p)}
+                          className="flex-1 sm:flex-none px-4 py-2 bg-[#006194] hover:bg-[#004b73] text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95 flex items-center justify-center gap-1.5 shrink-0"
+                          title={t('open_patient_chart')}
+                        >
+                          <span className="material-symbols-outlined text-[15px]">folder_shared</span>
+                          <span>{t('open_chart')}</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )
+            ) : activeQueuePatients.length === 0 ? (
               <div className="p-8 text-center bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs space-y-2">
                 <span className="material-symbols-outlined text-3xl text-slate-400 dark:text-slate-500">task_alt</span>
                 <p className="font-semibold text-slate-700 dark:text-slate-300">
