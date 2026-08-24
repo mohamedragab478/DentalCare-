@@ -308,16 +308,26 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
     return weekDaysWithDates.find((d) => d.isToday) || weekDaysWithDates[0];
   }, [weekDaysWithDates]);
 
-  // Preserve inClinic patients at top, then notInClinic patients
+  // Preserve inClinic patients at top (sorted by arrival), then notInClinic patients
   const displayedQueuePatients = useMemo(() => {
     const filtered = (patients || []).filter((p) => {
-      const patientClinicKey = normalizeClinicKey(p.attendingClinic || 'Clinic 1');
+      // Get the strict clinic room for this patient on today's date
+      const patientClinicRoom = getPatientClinicRoomForDate(p, todayDayObj.targetDate);
+      const patientClinicKey = normalizeClinicKey(patientClinicRoom);
       const activeClinicKey = normalizeClinicKey(effectiveClinic);
 
-      if (p.inClinic && patientClinicKey === activeClinicKey) {
+      // Patient MUST strictly belong to the active clinic room for today
+      if (patientClinicKey !== activeClinicKey) {
+        return false;
+      }
+
+      // If patient is inClinic in this active clinic, show them
+      if (p.inClinic) {
         return true;
       }
-      return isPatientMatchingClinicAndDate(p, effectiveClinic, todayDayObj);
+
+      // Otherwise check if patient matches today's date
+      return isPatientMatchingDate(p, todayDayObj);
     });
 
     const inClinicList = filtered
