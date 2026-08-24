@@ -497,8 +497,150 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
               </div>
             )}
 
-            {selectedDayKey !== 'all' ? (
-              /* Specific Day Filter Mode */
+            {isSelectedDayToday ? (
+              /* ─── TODAY: Full live queue with in-clinic toggle, mark done, completed accordion ─── */
+              activeQueuePatients.length === 0 && completedQueuePatients.length === 0 ? (
+                <div className="p-8 text-center bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs space-y-3">
+                  <span className="material-symbols-outlined text-3xl text-slate-400 dark:text-slate-500">event_busy</span>
+                  <p className="font-semibold text-slate-700 dark:text-slate-300">
+                    {isRTL ? 'لا توجد مواعيد لليوم في هذه العيادة.' : 'No appointments for today in this clinic.'}
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {activeQueuePatients.map((p, idx) => {
+                    const countdown = getAppointmentCountdown(p.nextVisit, p.nextVisitTime);
+
+                    return (
+                      <div
+                        key={p.id}
+                        className={`p-4 rounded-2xl border transition-all flex flex-col xl:flex-row xl:items-center justify-between gap-4 ${p.inClinic
+                          ? 'border-emerald-300 dark:border-emerald-800/80 bg-emerald-50/20 dark:bg-emerald-950/20 shadow-xs'
+                          : 'border-slate-200 dark:border-slate-800 bg-[#f8fafc] dark:bg-slate-800/60 hover:bg-white dark:hover:bg-slate-800 hover:border-[#006194] dark:hover:border-slate-700'
+                          }`}
+                      >
+                        <div className="flex items-center gap-3.5 flex-1 min-w-0">
+                          {/* Index Number Badge */}
+                          <div className="flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 shrink-0">
+                            <span className="text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300">
+                              #{idx + 1}
+                            </span>
+                          </div>
+
+                          {/* Patient Avatar with In-Clinic Beacon */}
+                          <div className="relative shrink-0">
+                            {p.avatar ? (
+                              <img src={p.avatar} alt={p.name} className="w-11 h-11 rounded-2xl object-cover border border-slate-200 dark:border-slate-700 shadow-2xs" />
+                            ) : (
+                              <div className={`w-11 h-11 rounded-2xl font-bold text-xs flex items-center justify-center shadow-2xs ${p.inClinic
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200'
+                                : 'bg-[#dae2fd] text-[#006194] dark:bg-blue-950 dark:text-blue-300'
+                                }`}>
+                                {p.initials}
+                              </div>
+                            )}
+                            {p.inClinic && (
+                              <span
+                                className="absolute -bottom-1 -right-1 rtl:-right-auto rtl:-left-1 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900 ring-2 ring-emerald-400/50 flex items-center justify-center"
+                                title={t('in_clinic_active')}
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Details */}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-headline font-bold text-sm sm:text-base text-slate-900 dark:text-white">
+                                {p.name}
+                              </span>
+                              <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">#{p.id}</span>
+
+                              {p.inClinic && (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shadow-2xs">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                  <span>{t('in_clinic')}</span>
+                                  {p.inClinicTime && <span className="text-[10px] font-normal opacity-80">({p.inClinicTime})</span>}
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2 flex-wrap text-xs text-slate-500 dark:text-slate-400 mt-1">
+                              <span>{p.treatmentType || (isRTL ? 'كشف ومتابعة دورية' : 'Routine Consultation')} • {isRTL ? `العمر ${p.age} سنة` : `Age ${p.age}`}</span>
+                              <span className="inline-flex items-center gap-1 font-bold text-[#006194] dark:text-[#00a3e0] bg-blue-50 dark:bg-blue-950/80 px-2 py-0.5 rounded-md border border-blue-100 dark:border-blue-900/50">
+                                <span className="material-symbols-outlined text-[13px]">location_on</span>
+                                <span>{isRTL ? getPatientClinicRoomForDate(p, todayDayObj.targetDate).replace(/Clinic\s*(\d+)/i, 'العيادة $1') : getPatientClinicRoomForDate(p, todayDayObj.targetDate)}</span>
+                                <span className="material-symbols-outlined text-[13px] ms-1">event</span>
+                                <span>{p.nextVisit}</span>
+                                <span className="text-[10px] font-normal text-slate-500 dark:text-slate-400">
+                                  ({isRTL ? countdown.badgeArabic : countdown.badgeEnglish})
+                                </span>
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Actions Toolbar */}
+                        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 self-start xl:self-center shrink-0 w-full xl:w-auto pt-2 xl:pt-0 border-t xl:border-t-0 border-slate-100 dark:border-slate-800">
+                          {/* 1. In Clinic Toggle Button */}
+                          <button
+                            type="button"
+                            onClick={(e) => handleInClinicToggle(p.id, e)}
+                            className={`flex-1 sm:flex-none px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs active:scale-95 shrink-0 ${p.inClinic
+                              ? 'bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-600'
+                              : 'bg-white dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-slate-700 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-300 border border-slate-200 dark:border-slate-700'
+                              }`}
+                            title={p.inClinic ? t('in_clinic_active') : t('toggle_in_clinic')}
+                          >
+                            <span className={`material-symbols-outlined text-[16px] ${p.inClinic ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                              {p.inClinic ? 'check_circle' : 'pin_drop'}
+                            </span>
+                            <span>{p.inClinic ? t('in_clinic') : t('toggle_in_clinic')}</span>
+                          </button>
+
+                          {/* 2. Schedule Visit Button */}
+                          {onScheduleVisit && (
+                            <button
+                              type="button"
+                              onClick={() => onScheduleVisit(p)}
+                              className="flex-1 sm:flex-none px-3 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-[#006194] dark:text-[#00a3e0] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 border border-blue-100 dark:border-slate-700 active:scale-95 shrink-0"
+                              title={t('schedule_visit')}
+                            >
+                              <span className="material-symbols-outlined text-[15px]">calendar_month</span>
+                              <span>{t('schedule_visit')}</span>
+                            </button>
+                          )}
+
+                          {/* 3. Open Chart Button */}
+                          <button
+                            type="button"
+                            onClick={() => onSelectPatient(p)}
+                            className="flex-1 sm:flex-none px-3.5 py-2 bg-[#006194] hover:bg-[#004b73] text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95 flex items-center justify-center gap-1.5 shrink-0"
+                            title={t('open_patient_chart')}
+                          >
+                            <span className="material-symbols-outlined text-[15px]">folder_shared</span>
+                            <span>{t('open_chart')}</span>
+                          </button>
+
+                          {/* 4. Mark as Finished Option */}
+                          <button
+                            type="button"
+                            onClick={(e) => handleToggleFinished(p.id, e)}
+                            className="flex-1 sm:flex-none px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs active:scale-95 shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white"
+                            title={t('mark_patient_done')}
+                          >
+                            <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                            <span>{t('mark_patient_done')}</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </>
+              )
+            ) : (
+              /* Specific Day Filter Mode (Other Days) */
               selectedDayPatients.length === 0 ? (
                 <div className="p-8 text-center bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs space-y-3">
                   <span className="material-symbols-outlined text-3xl text-slate-400 dark:text-slate-500">event_busy</span>
@@ -586,136 +728,6 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                   );
                 })
               )
-            ) : (
-              activeQueuePatients.map((p, idx) => {
-                const countdown = getAppointmentCountdown(p.nextVisit, p.nextVisitTime);
-
-                return (
-                  <div
-                    key={p.id}
-                    className={`p-4 rounded-2xl border transition-all flex flex-col xl:flex-row xl:items-center justify-between gap-4 ${p.inClinic
-                      ? 'border-emerald-300 dark:border-emerald-800/80 bg-emerald-50/20 dark:bg-emerald-950/20 shadow-xs'
-                      : 'border-slate-200 dark:border-slate-800 bg-[#f8fafc] dark:bg-slate-800/60 hover:bg-white dark:hover:bg-slate-800 hover:border-[#006194] dark:hover:border-slate-700'
-                      }`}
-                  >
-                    <div className="flex items-center gap-3.5 flex-1 min-w-0">
-                      {/* Index Number Badge */}
-                      <div className="flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 shrink-0">
-                        <span className="text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300">
-                          #{idx + 1}
-                        </span>
-                      </div>
-
-                      {/* Patient Avatar with In-Clinic Beacon */}
-                      <div className="relative shrink-0">
-                        {p.avatar ? (
-                          <img src={p.avatar} alt={p.name} className="w-11 h-11 rounded-2xl object-cover border border-slate-200 dark:border-slate-700 shadow-2xs" />
-                        ) : (
-                          <div className={`w-11 h-11 rounded-2xl font-bold text-xs flex items-center justify-center shadow-2xs ${p.inClinic
-                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200'
-                            : 'bg-[#dae2fd] text-[#006194] dark:bg-blue-950 dark:text-blue-300'
-                            }`}>
-                            {p.initials}
-                          </div>
-                        )}
-                        {p.inClinic && (
-                          <span
-                            className="absolute -bottom-1 -right-1 rtl:-right-auto rtl:-left-1 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900 ring-2 ring-emerald-400/50 flex items-center justify-center"
-                            title={t('in_clinic_active')}
-                          >
-                            <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Details: Name, Badges, Procedure, Next Visit Date */}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-headline font-bold text-sm sm:text-base text-slate-900 dark:text-white">
-                            {p.name}
-                          </span>
-                          <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">#{p.id}</span>
-
-                          {p.inClinic && (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shadow-2xs">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                              <span>{t('in_clinic')}</span>
-                              {p.inClinicTime && <span className="text-[10px] font-normal opacity-80">({p.inClinicTime})</span>}
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-2 flex-wrap text-xs text-slate-500 dark:text-slate-400 mt-1">
-                          <span>{p.treatmentType || (isRTL ? 'كشف ومتابعة دورية' : 'Routine Consultation')} • {isRTL ? `العمر ${p.age} سنة` : `Age ${p.age}`}</span>
-                            <span className="inline-flex items-center gap-1 font-bold text-[#006194] dark:text-[#00a3e0] bg-blue-50 dark:bg-blue-950/80 px-2 py-0.5 rounded-md border border-blue-100 dark:border-blue-900/50">
-                              <span className="material-symbols-outlined text-[13px]">location_on</span>
-                              <span>{isRTL ? getPatientClinicRoomForDate(p, todayDayObj.targetDate).replace(/Clinic\s*(\d+)/i, 'العيادة $1') : getPatientClinicRoomForDate(p, todayDayObj.targetDate)}</span>
-                              <span className="material-symbols-outlined text-[13px] ms-1">event</span>
-                              <span>{p.nextVisit}</span>
-                              <span className="text-[10px] font-normal text-slate-500 dark:text-slate-400">
-                                ({isRTL ? countdown.badgeArabic : countdown.badgeEnglish})
-                              </span>
-                            </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Actions Toolbar */}
-                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 self-start xl:self-center shrink-0 w-full xl:w-auto pt-2 xl:pt-0 border-t xl:border-t-0 border-slate-100 dark:border-slate-800">
-                      {/* 1. In Clinic Toggle Button */}
-                      <button
-                        type="button"
-                        onClick={(e) => handleInClinicToggle(p.id, e)}
-                        className={`flex-1 sm:flex-none px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs active:scale-95 shrink-0 ${p.inClinic
-                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-600'
-                          : 'bg-white dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-slate-700 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-300 border border-slate-200 dark:border-slate-700'
-                          }`}
-                        title={p.inClinic ? t('in_clinic_active') : t('toggle_in_clinic')}
-                      >
-                        <span className={`material-symbols-outlined text-[16px] ${p.inClinic ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                          {p.inClinic ? 'check_circle' : 'pin_drop'}
-                        </span>
-                        <span>{p.inClinic ? t('in_clinic') : t('toggle_in_clinic')}</span>
-                      </button>
-
-                      {/* 2. Schedule Visit Button */}
-                      {onScheduleVisit && (
-                        <button
-                          type="button"
-                          onClick={() => onScheduleVisit(p)}
-                          className="flex-1 sm:flex-none px-3 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-[#006194] dark:text-[#00a3e0] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 border border-blue-100 dark:border-slate-700 active:scale-95 shrink-0"
-                          title={t('schedule_visit')}
-                        >
-                          <span className="material-symbols-outlined text-[15px]">calendar_month</span>
-                          <span>{t('schedule_visit')}</span>
-                        </button>
-                      )}
-
-                      {/* 3. Open Chart Button */}
-                      <button
-                        type="button"
-                        onClick={() => onSelectPatient(p)}
-                        className="flex-1 sm:flex-none px-3.5 py-2 bg-[#006194] hover:bg-[#004b73] text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95 flex items-center justify-center gap-1.5 shrink-0"
-                        title={t('open_patient_chart')}
-                      >
-                        <span className="material-symbols-outlined text-[15px]">folder_shared</span>
-                        <span>{t('open_chart')}</span>
-                      </button>
-
-                      {/* 4. Mark as Finished Option */}
-                      <button
-                        type="button"
-                        onClick={(e) => handleToggleFinished(p.id, e)}
-                        className="flex-1 sm:flex-none px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs active:scale-95 shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white"
-                        title={t('mark_patient_done')}
-                      >
-                        <span className="material-symbols-outlined text-[16px]">check_circle</span>
-                        <span>{t('mark_patient_done')}</span>
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
             )}
 
             {/* Collapsible Accordion List for Completed Patients (تم الانتهاء منهم) */}
