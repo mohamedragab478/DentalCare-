@@ -45,7 +45,11 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
   const [internalCompletedIds, setInternalCompletedIds] = useState<string[]>(['849202']);
   const [visitFilter, setVisitFilter] = useState<'All' | 'Completed' | 'Scheduled'>('All');
   const [queueClinicFilter, setQueueClinicFilter] = useState<'ActiveClinic' | 'All'>('ActiveClinic');
-  const [selectedDayKey, setSelectedDayKey] = useState<string>('all');
+  const [selectedDayKey, setSelectedDayKey] = useState<string>(() => {
+    const todayNum = new Date().getDay();
+    const dayMap: Record<number, string> = { 6: 'sat', 0: 'sun', 1: 'mon', 2: 'tue', 3: 'wed', 4: 'thu', 5: 'fri' };
+    return dayMap[todayNum] || 'sat';
+  });
   const [visitToDelete, setVisitToDelete] = useState<{ patientId: string; visitId: string; patientName: string; procedure: string } | null>(null);
 
   // 7 Days Weekday Filter Logic (Saturday -> Friday)
@@ -315,42 +319,9 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                 <span>{t('drag_to_reorder')}</span>
               </p>
 
-              {/* 7 Days Weekday Filter Buttons Bar (السبت -> الجمعة) */}
+              {/* 7 Days Weekday Filter Buttons (السبت -> الجمعة) */}
               <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-[16px] text-[#006194] dark:text-[#00a3e0]">calendar_month</span>
-                    <span>{isRTL ? "مواعيد أيام الأسبوع (تصفية حسب اليوم):" : "Week Appointments (Filter by Day):"}</span>
-                  </span>
-                  {selectedDayKey !== 'all' && (
-                    <button
-                      type="button"
-                      onClick={() => setSelectedDayKey('all')}
-                      className="text-[11px] font-bold text-[#006194] dark:text-[#00a3e0] hover:underline flex items-center gap-1 cursor-pointer"
-                    >
-                      <span className="material-symbols-outlined text-[14px]">restart_alt</span>
-                      <span>{isRTL ? "الرجوع لمواعيد اليوم الإجمالية" : "Show Today's Queue"}</span>
-                    </button>
-                  )}
-                </div>
-
                 <div className="flex flex-wrap items-stretch gap-1.5">
-                  {/* Today / All Button */}
-                  <button
-                    type="button"
-                    onClick={() => setSelectedDayKey('all')}
-                    className={`px-2.5 py-2 rounded-xl text-[11px] font-bold transition-all flex flex-col items-center justify-center gap-0.5 border cursor-pointer min-w-[70px] ${selectedDayKey === 'all'
-                      ? 'bg-[#006194] text-white border-[#006194]'
-                      : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-[#006194]'
-                    }`}
-                  >
-                    <span>{isRTL ? "طابور اليوم" : "Today"}</span>
-                    <span className={`text-[10px] font-mono px-1.5 rounded-full ${selectedDayKey === 'all' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}>
-                      {displayedQueuePatients.length}
-                    </span>
-                  </button>
-
-                  {/* 7 Weekday Buttons (السبت -> الجمعة) */}
                   {weekDaysWithDates.map((day) => {
                     const count = dayCounts[day.key] || 0;
                     const isSelected = selectedDayKey === day.key;
