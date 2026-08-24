@@ -147,11 +147,9 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
-  const safePatients = useMemo(() => (patients && Array.isArray(patients) ? patients : []), [patients]);
-  const safeClinics = useMemo(() => (clinics && Array.isArray(clinics) ? clinics : []), [clinics]);
-  const safeCompletedIds = useMemo(() => (completedPatientIds && Array.isArray(completedPatientIds) ? completedPatientIds : []), [completedPatientIds]);
-
-  const finishedIds = safeCompletedIds.length > 0 ? safeCompletedIds : internalCompletedIds;
+  const finishedIds = (completedPatientIds && Array.isArray(completedPatientIds) && completedPatientIds.length > 0)
+    ? completedPatientIds
+    : internalCompletedIds;
 
   const handleToggleFinished = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -217,7 +215,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
   const effectiveClinic = activeClinic || doctorProfile?.assignedClinic || 'Clinic 1';
 
   const displayedQueuePatients = useMemo(() => {
-    const filtered = safePatients.filter((p) => {
+    const filtered = (patients || []).filter((p) => {
       if (queueClinicFilter === 'All') return true;
       return !p.attendingClinic || p.attendingClinic === effectiveClinic;
     });
@@ -226,7 +224,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
     const notInClinicList = filtered.filter((p) => !p.inClinic);
 
     return [...inClinicList, ...notInClinicList];
-  }, [safePatients, queueClinicFilter, effectiveClinic]);
+  }, [patients, queueClinicFilter, effectiveClinic]);
 
   const selectedDayPatients = useMemo(() => {
     if (selectedDayKey === 'all') return [];
@@ -234,16 +232,16 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
     const selectedDayObj = weekDaysWithDates.find((d) => d.key === selectedDayKey);
     if (!selectedDayObj) return [];
 
-    return safePatients.filter((p) => {
+    return patients.filter((p) => {
       const matchesClinic = queueClinicFilter === 'All' || !p.attendingClinic || p.attendingClinic === effectiveClinic;
       if (!matchesClinic) return false;
       return isPatientMatchingDate(p, selectedDayObj);
     });
-  }, [safePatients, queueClinicFilter, effectiveClinic, selectedDayKey, weekDaysWithDates]);
+  }, [patients, queueClinicFilter, effectiveClinic, selectedDayKey, weekDaysWithDates]);
 
   const dayCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    const filteredForClinic = safePatients.filter((p) => {
+    const filteredForClinic = patients.filter((p) => {
       if (queueClinicFilter === 'All') return true;
       return !p.attendingClinic || p.attendingClinic === effectiveClinic;
     });
@@ -253,7 +251,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
     });
 
     return counts;
-  }, [safePatients, queueClinicFilter, effectiveClinic, weekDaysWithDates]);
+  }, [patients, queueClinicFilter, effectiveClinic, weekDaysWithDates]);
 
   return (
     <div className="max-w-7xl mx-auto w-full space-y-8 animate-in fade-in duration-200 transition-colors">
@@ -343,11 +341,10 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                   <button
                     type="button"
                     onClick={() => setSelectedDayKey('all')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 border cursor-pointer ${
-                      selectedDayKey === 'all'
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 border cursor-pointer ${selectedDayKey === 'all'
                         ? 'bg-[#006194] text-white border-[#006194] shadow-xs'
                         : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-[#006194]'
-                    }`}
+                      }`}
                   >
                     <span>{isRTL ? "طابور اليوم" : "Today's Queue"}</span>
                     <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${selectedDayKey === 'all' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}>
@@ -365,13 +362,12 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                         key={day.key}
                         type="button"
                         onClick={() => setSelectedDayKey(day.key)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 border cursor-pointer ${
-                          isSelected
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 border cursor-pointer ${isSelected
                             ? 'bg-[#006194] text-white border-[#006194] shadow-xs'
                             : day.isToday
-                            ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100'
-                            : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-[#006194]'
-                        }`}
+                              ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100'
+                              : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-[#006194]'
+                          }`}
                       >
                         <div className="flex items-center gap-1">
                           <span>{isRTL ? day.arName : day.enName}</span>
@@ -419,8 +415,8 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
               type="button"
               onClick={() => setQueueClinicFilter('ActiveClinic')}
               className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${queueClinicFilter === 'ActiveClinic'
-                  ? 'bg-[#006194] text-white shadow-2xs'
-                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+                ? 'bg-[#006194] text-white shadow-2xs'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
                 }`}
             >
               <span className="material-symbols-outlined text-[15px]">medical_services</span>
@@ -430,8 +426,8 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
               type="button"
               onClick={() => setQueueClinicFilter('All')}
               className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${queueClinicFilter === 'All'
-                  ? 'bg-[#006194] text-white shadow-2xs'
-                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+                ? 'bg-[#006194] text-white shadow-2xs'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
                 }`}
             >
               <span className="material-symbols-outlined text-[15px]">groups</span>
@@ -560,14 +556,14 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                     onDrop={(e) => handleDrop(e, idx)}
                     onDragEnd={handleDragEnd}
                     className={`p-4 rounded-2xl border transition-all flex flex-col xl:flex-row xl:items-center justify-between gap-4 ${isBeingDragged
-                        ? 'opacity-40 scale-[0.98] border-dashed border-[#006194] bg-blue-50/50 dark:bg-blue-950/40'
-                        : isTargetDrop
-                          ? 'border-[#006194] ring-2 ring-[#006194]/40 bg-blue-50/80 dark:bg-blue-950/60'
-                          : isFinished
-                            ? 'border-emerald-200 dark:border-emerald-900 bg-emerald-50/40 dark:bg-emerald-950/20 opacity-90'
-                            : p.inClinic
-                              ? 'border-emerald-300 dark:border-emerald-800/80 bg-emerald-50/20 dark:bg-emerald-950/20 shadow-xs'
-                              : 'border-slate-200 dark:border-slate-800 bg-[#f8fafc] dark:bg-slate-800/60 hover:bg-white dark:hover:bg-slate-800 hover:border-[#006194] dark:hover:border-slate-700'
+                      ? 'opacity-40 scale-[0.98] border-dashed border-[#006194] bg-blue-50/50 dark:bg-blue-950/40'
+                      : isTargetDrop
+                        ? 'border-[#006194] ring-2 ring-[#006194]/40 bg-blue-50/80 dark:bg-blue-950/60'
+                        : isFinished
+                          ? 'border-emerald-200 dark:border-emerald-900 bg-emerald-50/40 dark:bg-emerald-950/20 opacity-90'
+                          : p.inClinic
+                            ? 'border-emerald-300 dark:border-emerald-800/80 bg-emerald-50/20 dark:bg-emerald-950/20 shadow-xs'
+                            : 'border-slate-200 dark:border-slate-800 bg-[#f8fafc] dark:bg-slate-800/60 hover:bg-white dark:hover:bg-slate-800 hover:border-[#006194] dark:hover:border-slate-700'
                       }`}
                   >
                     <div className="flex items-center gap-3.5 flex-1 min-w-0">
@@ -590,10 +586,10 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                           <img src={p.avatar} alt={p.name} className="w-11 h-11 rounded-2xl object-cover border border-slate-200 dark:border-slate-700 shadow-2xs" />
                         ) : (
                           <div className={`w-11 h-11 rounded-2xl font-bold text-xs flex items-center justify-center shadow-2xs ${isFinished
-                              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
-                              : p.inClinic
-                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200'
-                                : 'bg-[#dae2fd] text-[#006194] dark:bg-blue-950 dark:text-blue-300'
+                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                            : p.inClinic
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200'
+                              : 'bg-[#dae2fd] text-[#006194] dark:bg-blue-950 dark:text-blue-300'
                             }`}>
                             {p.initials}
                           </div>
@@ -654,8 +650,8 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                         type="button"
                         onClick={(e) => handleInClinicToggle(p.id, e)}
                         className={`flex-1 sm:flex-none px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs active:scale-95 shrink-0 ${p.inClinic
-                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-600'
-                            : 'bg-white dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-slate-700 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-300 border border-slate-200 dark:border-slate-700'
+                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-600'
+                          : 'bg-white dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-slate-700 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-300 border border-slate-200 dark:border-slate-700'
                           }`}
                         title={p.inClinic ? t('in_clinic_active') : t('toggle_in_clinic')}
                       >
@@ -694,8 +690,8 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                         type="button"
                         onClick={(e) => handleToggleFinished(p.id, e)}
                         className={`flex-1 sm:flex-none px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs active:scale-95 shrink-0 ${isFinished
-                            ? 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300'
-                            : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                          ? 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300'
+                          : 'bg-emerald-600 hover:bg-emerald-700 text-white'
                           }`}
                         title={isFinished ? t('mark_pending') : t('mark_patient_done')}
                       >
@@ -748,10 +744,10 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                   <div
                     key={room.id}
                     className={`p-3 rounded-2xl border transition-all flex items-center justify-between gap-2 ${isCurrentDoctorRoom
-                        ? 'border-[#006194] dark:border-[#00a3e0] bg-blue-50/70 dark:bg-blue-950/40 ring-1 ring-[#006194]/20'
-                        : isOccupiedByOther
-                          ? 'border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 opacity-90'
-                          : 'border-slate-200 dark:border-slate-800 bg-[#f8fafc] dark:bg-slate-800/60'
+                      ? 'border-[#006194] dark:border-[#00a3e0] bg-blue-50/70 dark:bg-blue-950/40 ring-1 ring-[#006194]/20'
+                      : isOccupiedByOther
+                        ? 'border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 opacity-90'
+                        : 'border-slate-200 dark:border-slate-800 bg-[#f8fafc] dark:bg-slate-800/60'
                       }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
@@ -878,8 +874,8 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                       key={tab}
                       onClick={() => setVisitFilter(tab)}
                       className={`px-3 py-1 rounded-lg font-semibold transition-all cursor-pointer ${visitFilter === tab
-                          ? 'bg-white dark:bg-slate-700 text-[#006194] dark:text-white shadow-2xs'
-                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                        ? 'bg-white dark:bg-slate-700 text-[#006194] dark:text-white shadow-2xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                         }`}
                     >
                       {tab === 'All' ? (isRTL ? 'الكل' : 'All') : tab === 'Completed' ? (isRTL ? 'المكتملة' : 'Completed') : (isRTL ? 'المجدولة' : 'Scheduled')}
@@ -920,8 +916,8 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                         )}
                         <span
                           className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${visit.status === 'completed'
-                              ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-                              : 'bg-blue-50 dark:bg-blue-950 text-[#006194] dark:text-blue-300 border-blue-200 dark:border-blue-800'
+                            ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                            : 'bg-blue-50 dark:bg-blue-950 text-[#006194] dark:text-blue-300 border-blue-200 dark:border-blue-800'
                             }`}
                         >
                           {visit.status === 'completed' ? (isRTL ? 'تمت بنجاح' : 'Completed') : (isRTL ? 'مجدولة' : 'Scheduled')}
