@@ -30,15 +30,27 @@ export function App() {
   const [currentView, setCurrentView] = useState<AppView>('auth-gateway');
 
   // Attending Doctor Profile State (Loaded with Persistent Storage fallback)
-  const [doctorProfile, setDoctorProfile] = useState<DoctorProfile>(() => storage.getDoctorProfile());
+  const [doctorProfile, setDoctorProfile] = useState<DoctorProfile>(() => {
+    const loaded = storage.getDoctorProfile();
+    return loaded || INITIAL_DOCTOR;
+  });
 
   // Today's Queue Completed Status Tracking (تم الانتهاء)
-  const [completedQueueIds, setCompletedQueueIds] = useState<string[]>(() => storage.getCompletedQueue());
+  const [completedQueueIds, setCompletedQueueIds] = useState<string[]>(() => {
+    const loaded = storage.getCompletedQueue();
+    return Array.isArray(loaded) ? loaded : [];
+  });
 
   // Application Data State (Loaded with Persistent Storage fallback)
-  const [patients, setPatients] = useState<Patient[]>(() => storage.getPatients());
+  const [patients, setPatients] = useState<Patient[]>(() => {
+    const loaded = storage.getPatients();
+    return loaded && loaded.length > 0 ? loaded : INITIAL_PATIENTS;
+  });
   const [selectedPatientId, setSelectedPatientId] = useState<string>('849201'); // Mohamed Ali
-  const [clinics, setClinics] = useState<ClinicRoom[]>(() => storage.getClinics());
+  const [clinics, setClinics] = useState<ClinicRoom[]>(() => {
+    const loaded = storage.getClinics();
+    return loaded && loaded.length > 0 ? loaded : CLINIC_ROOMS;
+  });
 
   // Last synced serialized strings to prevent echo loops
   const lastSyncedDoctorRef = useRef<string>(JSON.stringify(doctorProfile));

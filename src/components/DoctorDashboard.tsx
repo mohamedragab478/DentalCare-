@@ -176,7 +176,9 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
-  const finishedIds = completedPatientIds.length > 0 ? completedPatientIds : internalCompletedIds;
+  const finishedIds = (completedPatientIds && Array.isArray(completedPatientIds) && completedPatientIds.length > 0)
+    ? completedPatientIds
+    : internalCompletedIds;
 
   const handleToggleFinished = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
