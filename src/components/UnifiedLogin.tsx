@@ -66,6 +66,7 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
     }, 580);
 
     setTimeout(() => {
+      setIsLoading(false);
       onFinish();
     }, 850);
   };
@@ -155,21 +156,31 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
 
     const trimmedPassword = password.trim();
 
-    // 0. Primary Check: Supabase app_users table (RBAC: 0 = Patient, 1 = Doctor)
+    // 0. Primary Check: Supabase app_users table (RBAC: 0 = Patient, 1 = Doctor) with 1.2s timeout
     try {
-      const { supabaseService } = await import('../services/supabaseService');
-      const authRes = await supabaseService.authenticateUser(cleanInput, trimmedPassword);
-      if (authRes.success && authRes.refId !== undefined) {
-        if (authRes.role === 1) {
-          const doc = doctors.find((d) => d.id === authRes.refId);
+      const authPromise = (async () => {
+        const { supabaseService } = await import('../services/supabaseService');
+        return await supabaseService.authenticateUser(cleanInput, trimmedPassword);
+      })();
+
+      const timeoutPromise = new Promise<{ success: boolean }>((resolve) =>
+        setTimeout(() => resolve({ success: false }), 1200)
+      );
+
+      const authRes = await Promise.race([authPromise, timeoutPromise]);
+      if (authRes.success && (authRes as any).refId !== undefined) {
+        const refId = (authRes as any).refId;
+        const role = (authRes as any).role;
+        if (role === 1) {
+          const doc = doctors.find((d) => d.id === refId);
           executeLoginTransition('doctor', doc ? doc.name : 'Doctor', () => {
-            onDoctorLoginSuccess(authRes.refId, selectedClinic);
+            onDoctorLoginSuccess(refId, selectedClinic);
           });
           return;
         } else {
-          const pat = patients.find((p) => p.id === authRes.refId);
+          const pat = patients.find((p) => p.id === refId);
           executeLoginTransition('patient', pat ? pat.name : 'Patient', () => {
-            onPatientLoginSuccess(authRes.refId);
+            onPatientLoginSuccess(refId);
           });
           return;
         }
