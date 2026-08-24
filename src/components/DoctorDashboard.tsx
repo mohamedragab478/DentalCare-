@@ -43,6 +43,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
   const { t, isRTL, lang } = useAppThemeLanguage();
 
   const [internalCompletedIds, setInternalCompletedIds] = useState<string[]>(['849202']);
+  const [isActiveQueueOpen, setIsActiveQueueOpen] = useState<boolean>(true);
   const [isCompletedListOpen, setIsCompletedListOpen] = useState<boolean>(false);
   const [visitFilter, setVisitFilter] = useState<'All' | 'Completed' | 'Scheduled'>('All');
   const [queueClinicFilter, setQueueClinicFilter] = useState<'ActiveClinic' | 'All'>('ActiveClinic');
