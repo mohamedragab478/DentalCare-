@@ -334,24 +334,22 @@ export function App() {
 
       const isNowInClinic = !target.inClinic;
       const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const nowTimestamp = Date.now();
 
       const updatedPatient: Patient = {
         ...target,
         inClinic: isNowInClinic,
-        inClinicTime: isNowInClinic ? nowTime : undefined
+        inClinicTime: isNowInClinic ? nowTime : undefined,
+        inClinicTimestamp: isNowInClinic ? nowTimestamp : undefined
       };
 
+      const others = prev.filter((p) => p.id !== patientId);
+      const alreadyInClinic = others.filter((p) => p.inClinic);
+      const notInClinic = others.filter((p) => !p.inClinic);
+
       if (isNowInClinic) {
-        // Move to the top of the queue right after any patients already in clinic
-        const others = prev.filter((p) => p.id !== patientId);
-        const alreadyInClinic = others.filter((p) => p.inClinic);
-        const notInClinic = others.filter((p) => !p.inClinic);
         return [...alreadyInClinic, updatedPatient, ...notInClinic];
       } else {
-        // If untoggled, preserve others and put this patient with the non-in-clinic group
-        const others = prev.filter((p) => p.id !== patientId);
-        const alreadyInClinic = others.filter((p) => p.inClinic);
-        const notInClinic = others.filter((p) => !p.inClinic);
         return [...alreadyInClinic, ...notInClinic, updatedPatient];
       }
     });

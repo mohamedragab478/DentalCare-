@@ -320,7 +320,15 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
       return isPatientMatchingClinicAndDate(p, effectiveClinic, todayDayObj);
     });
 
-    const inClinicList = filtered.filter((p) => p.inClinic);
+    const inClinicList = filtered
+      .filter((p) => p.inClinic)
+      .sort((a, b) => {
+        const timeA = a.inClinicTimestamp || 0;
+        const timeB = b.inClinicTimestamp || 0;
+        if (timeA !== timeB) return timeA - timeB;
+        return (a.inClinicOrder || 0) - (b.inClinicOrder || 0);
+      });
+
     const notInClinicList = filtered.filter((p) => !p.inClinic);
 
     return [...inClinicList, ...notInClinicList];
@@ -573,9 +581,6 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                                 <span>{isRTL ? getPatientClinicRoomForDate(p, todayDayObj.targetDate).replace(/Clinic\s*(\d+)/i, 'العيادة $1') : getPatientClinicRoomForDate(p, todayDayObj.targetDate)}</span>
                                 <span className="material-symbols-outlined text-[13px] ms-1">event</span>
                                 <span>{p.nextVisit}</span>
-                                <span className="text-[10px] font-normal text-slate-500 dark:text-slate-400">
-                                  ({isRTL ? countdown.badgeArabic : countdown.badgeEnglish})
-                                </span>
                               </span>
                             </div>
                           </div>

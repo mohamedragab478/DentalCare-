@@ -334,65 +334,18 @@ export const ScheduleVisitModal: React.FC<ScheduleVisitModalProps> = ({
             </div>
           </div>
 
-          {/* Date & Time Picker */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                {isRTL ? "تاريخ الزيارة المحدد" : "Visit Date"}
-              </label>
-              <input
-                type="date"
-                required
-                value={selectedDateISO}
-                onChange={(e) => setSelectedDateISO(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:outline-none focus:border-[#006194]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                {isRTL ? "توقيت الحضور" : "Time Slot"}
-              </label>
-              <select
-                value={selectedTime}
-                onChange={(e) => setSelectedTime(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:outline-none focus:border-[#006194]"
-              >
-                <option value="09:00 AM">{isRTL ? "09:00 صباحاً" : "09:00 AM"}</option>
-                <option value="10:00 AM">{isRTL ? "10:00 صباحاً" : "10:00 AM"}</option>
-                <option value="10:30 AM">{isRTL ? "10:30 صباحاً" : "10:30 AM"}</option>
-                <option value="11:30 AM">{isRTL ? "11:30 صباحاً" : "11:30 AM"}</option>
-                <option value="01:00 PM">{isRTL ? "01:00 ظهراً" : "01:00 PM"}</option>
-                <option value="02:30 PM">{isRTL ? "02:30 عصراً" : "02:30 PM"}</option>
-                <option value="04:00 PM">{isRTL ? "04:00 مساءً" : "04:00 PM"}</option>
-                <option value="05:30 PM">{isRTL ? "05:30 مساءً" : "05:30 PM"}</option>
-                <option value="07:00 PM">{isRTL ? "07:00 مساءً" : "07:00 PM"}</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Live Patient Portal Preview Banner */}
-          <div className="p-4 rounded-2xl bg-[#004b73] text-white space-y-1.5 border border-[#003b5c]">
-            <div className="flex items-center justify-between text-xs font-bold">
-              <span className="flex items-center gap-1.5 opacity-90">
-                <span className="material-symbols-outlined text-[16px]">visibility</span>
-                <span>{isRTL ? "معاينة ما سيظهر في صفحة المريض فوراً:" : "Patient Portal Live Preview:"}</span>
-              </span>
-              <span className="bg-white/20 px-2 py-0.5 rounded text-[11px] font-mono">
-                {displayFormattedDate}
-              </span>
-            </div>
-            
-            <div className="bg-white/10 p-2.5 rounded-xl text-xs space-y-1 border border-white/15">
-              <div className="flex items-center justify-between gap-2">
-                <strong className="text-white text-sm">
-                  {isRTL ? previewCountdown.badgeArabic : previewCountdown.badgeEnglish}
-                </strong>
-              </div>
-              <p className="text-[11px] text-blue-100 leading-relaxed">
-                {isRTL ? previewCountdown.descriptionArabic : previewCountdown.descriptionEnglish}
-              </p>
-            </div>
+          {/* Date Picker */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+              {isRTL ? "تاريخ الزيارة المحدد" : "Visit Date"}
+            </label>
+            <input
+              type="date"
+              required
+              value={selectedDateISO}
+              onChange={(e) => setSelectedDateISO(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:outline-none focus:border-[#006194]"
+            />
           </div>
 
           {/* Procedure & Room */}
