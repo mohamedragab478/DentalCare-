@@ -177,16 +177,6 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
     } else {
       const assignedId = previewNumericId || Math.floor(100000 + Math.random() * 900000).toString();
 
-      const initialVisitRecord = {
-        id: `v-${Date.now()}`,
-        date: today,
-        doctorName: doctorName,
-        procedure: treatmentType || 'Routine Consultation',
-        notes: '',
-        status: 'in-progress' as const,
-        clinicRoom: targetClinic
-      };
-
       const newPatient: Patient = {
         id: assignedId,
         name,
@@ -195,14 +185,13 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
         age: parseInt(age, 10) || 30,
         gender,
         phone: normalizedPhone,
-        lastVisit: today,
+        lastVisit: 'No visits',
         treatmentType,
         attendingClinic: targetClinic,
         medicalNotes,
-        inClinic: true,
-        inClinicTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        inClinic: false,
         teeth: {},
-        visits: [initialVisitRecord],
+        visits: [],
         images: []
       };
       onAddPatient(newPatient);
