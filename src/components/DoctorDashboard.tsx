@@ -147,7 +147,11 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
-  const finishedIds = completedPatientIds.length > 0 ? completedPatientIds : internalCompletedIds;
+  const safePatients = useMemo(() => (patients && Array.isArray(patients) ? patients : []), [patients]);
+  const safeClinics = useMemo(() => (clinics && Array.isArray(clinics) ? clinics : []), [clinics]);
+  const safeCompletedIds = useMemo(() => (completedPatientIds && Array.isArray(completedPatientIds) ? completedPatientIds : []), [completedPatientIds]);
+
+  const finishedIds = safeCompletedIds.length > 0 ? safeCompletedIds : internalCompletedIds;
 
   const handleToggleFinished = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -213,13 +217,16 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
   const effectiveClinic = activeClinic || doctorProfile?.assignedClinic || 'Clinic 1';
 
   const displayedQueuePatients = useMemo(() => {
-    const filtered = patients.filter((p) => {
+    const filtered = safePatients.filter((p) => {
       if (queueClinicFilter === 'All') return true;
       return !p.attendingClinic || p.attendingClinic === effectiveClinic;
     });
 
+    const inClinicList = filtered.filter((p) => p.inClinic);
+    const notInClinicList = filtered.filter((p) => !p.inClinic);
+
     return [...inClinicList, ...notInClinicList];
-  }, [patients, queueClinicFilter, effectiveClinic]);
+  }, [safePatients, queueClinicFilter, effectiveClinic]);
 
   const selectedDayPatients = useMemo(() => {
     if (selectedDayKey === 'all') return [];
@@ -227,16 +234,16 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
     const selectedDayObj = weekDaysWithDates.find((d) => d.key === selectedDayKey);
     if (!selectedDayObj) return [];
 
-    return patients.filter((p) => {
+    return safePatients.filter((p) => {
       const matchesClinic = queueClinicFilter === 'All' || !p.attendingClinic || p.attendingClinic === effectiveClinic;
       if (!matchesClinic) return false;
       return isPatientMatchingDate(p, selectedDayObj);
     });
-  }, [patients, queueClinicFilter, effectiveClinic, selectedDayKey, weekDaysWithDates]);
+  }, [safePatients, queueClinicFilter, effectiveClinic, selectedDayKey, weekDaysWithDates]);
 
   const dayCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    const filteredForClinic = patients.filter((p) => {
+    const filteredForClinic = safePatients.filter((p) => {
       if (queueClinicFilter === 'All') return true;
       return !p.attendingClinic || p.attendingClinic === effectiveClinic;
     });
@@ -246,7 +253,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
     });
 
     return counts;
-  }, [patients, queueClinicFilter, effectiveClinic, weekDaysWithDates]);
+  }, [safePatients, queueClinicFilter, effectiveClinic, weekDaysWithDates]);
 
   return (
     <div className="max-w-7xl mx-auto w-full space-y-8 animate-in fade-in duration-200 transition-colors">
