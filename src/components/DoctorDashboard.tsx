@@ -151,7 +151,9 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
-  const finishedIds = completedPatientIds.length > 0 ? completedPatientIds : internalCompletedIds;
+  const finishedIds = (completedPatientIds && Array.isArray(completedPatientIds) && completedPatientIds.length > 0)
+    ? completedPatientIds
+    : internalCompletedIds;
 
   const handleToggleFinished = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -217,7 +219,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
   const effectiveClinic = activeClinic || doctorProfile?.assignedClinic || 'Clinic 1';
 
   const displayedQueuePatients = useMemo(() => {
-    const filtered = patients.filter((p) => {
+    const filtered = (patients || []).filter((p) => {
       if (queueClinicFilter === 'All') return true;
       return !p.attendingClinic || p.attendingClinic === effectiveClinic;
     });
@@ -234,7 +236,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
     const selectedDayObj = weekDaysWithDates.find((d) => d.key === selectedDayKey);
     if (!selectedDayObj) return [];
 
-    return patients.filter((p) => {
+    return (patients || []).filter((p) => {
       const matchesClinic = queueClinicFilter === 'All' || !p.attendingClinic || p.attendingClinic === effectiveClinic;
       if (!matchesClinic) return false;
       return isPatientMatchingDate(p, selectedDayObj);
@@ -243,7 +245,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
 
   const dayCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    const filteredForClinic = patients.filter((p) => {
+    const filteredForClinic = (patients || []).filter((p) => {
       if (queueClinicFilter === 'All') return true;
       return !p.attendingClinic || p.attendingClinic === effectiveClinic;
     });
