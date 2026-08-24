@@ -30,27 +30,15 @@ export function App() {
   const [currentView, setCurrentView] = useState<AppView>('auth-gateway');
 
   // Attending Doctor Profile State (Loaded with Persistent Storage fallback)
-  const [doctorProfile, setDoctorProfile] = useState<DoctorProfile>(() => {
-    const loaded = storage.getDoctorProfile();
-    return loaded || INITIAL_DOCTOR;
-  });
+  const [doctorProfile, setDoctorProfile] = useState<DoctorProfile>(() => storage.getDoctorProfile());
 
   // Today's Queue Completed Status Tracking (تم الانتهاء)
-  const [completedQueueIds, setCompletedQueueIds] = useState<string[]>(() => {
-    const loaded = storage.getCompletedQueue();
-    return Array.isArray(loaded) ? loaded : [];
-  });
+  const [completedQueueIds, setCompletedQueueIds] = useState<string[]>(() => storage.getCompletedQueue());
 
   // Application Data State (Loaded with Persistent Storage fallback)
-  const [patients, setPatients] = useState<Patient[]>(() => {
-    const loaded = storage.getPatients();
-    return loaded && loaded.length > 0 ? loaded : INITIAL_PATIENTS;
-  });
+  const [patients, setPatients] = useState<Patient[]>(() => storage.getPatients());
   const [selectedPatientId, setSelectedPatientId] = useState<string>('849201'); // Mohamed Ali
-  const [clinics, setClinics] = useState<ClinicRoom[]>(() => {
-    const loaded = storage.getClinics();
-    return loaded && loaded.length > 0 ? loaded : CLINIC_ROOMS;
-  });
+  const [clinics, setClinics] = useState<ClinicRoom[]>(() => storage.getClinics());
 
   // Last synced serialized strings to prevent echo loops
   const lastSyncedDoctorRef = useRef<string>(JSON.stringify(doctorProfile));
@@ -101,17 +89,19 @@ export function App() {
     async function loadCloudData() {
       try {
         const cloudPatients = await supabaseService.fetchPatients();
-        if (cloudPatients !== null) {
+        if (cloudPatients && cloudPatients.length > 0) {
           lastSyncedPatientsRef.current = JSON.stringify(cloudPatients);
           setPatients(cloudPatients);
-          storage.setPatients(cloudPatients);
+        } else {
+          // Push initial data to cloud so Supabase gets populated
+          const currentLocalPatients = storage.getPatients();
+          supabaseService.syncPatientsToCloud(currentLocalPatients);
         }
 
         const cloudClinics = await supabaseService.fetchClinics();
         if (cloudClinics && cloudClinics.length > 0) {
           lastSyncedClinicsRef.current = JSON.stringify(cloudClinics);
           setClinics(cloudClinics);
-          storage.setClinics(cloudClinics);
         } else {
           supabaseService.syncClinicsToCloud(storage.getClinics());
         }
@@ -120,7 +110,6 @@ export function App() {
         if (cloudDoctor) {
           lastSyncedDoctorRef.current = JSON.stringify(cloudDoctor);
           setDoctorProfile(cloudDoctor);
-          storage.setDoctorProfile(cloudDoctor);
         } else {
           supabaseService.syncDoctorProfileToCloud(storage.getDoctorProfile());
         }
@@ -144,7 +133,6 @@ export function App() {
         if (lastSyncedPatientsRef.current !== serialized) {
           lastSyncedPatientsRef.current = serialized;
           setPatients(newPatients);
-          storage.setPatients(newPatients);
         }
       },
       onClinicsChange: (newClinics) => {
@@ -223,7 +211,7 @@ export function App() {
 
   const handleUpdateActiveClinic = (clinic: string) => {
     setActiveClinic(clinic);
-    
+
     // 1. Update doctor profile
     const updatedDoctor = {
       ...doctorProfile,
@@ -332,42 +320,9 @@ export function App() {
   };
 
   const handleTogglePatientCompleted = (patientId: string) => {
-    setCompletedQueueIds((prev) => {
-      const willBeCompleted = !prev.includes(patientId);
-      const nextCompleted = willBeCompleted
-        ? [...prev, patientId]
-        : prev.filter((id) => id !== patientId);
-
-      // When marked finished, automatically set inClinic to false as requested by user
-      if (willBeCompleted) {
-        setPatients((currentPatients) => {
-          const target = currentPatients.find((p) => p.id === patientId);
-          if (!target) return currentPatients;
-
-          const updatedPatient: Patient = {
-            ...target,
-            inClinic: false,
-            inClinicTime: undefined,
-            inClinicTimestamp: undefined,
-            inClinicOrder: undefined
-          };
-
-          // Sync individual patient update to Supabase
-          supabaseService.saveSinglePatientToCloud(updatedPatient);
-
-          const others = currentPatients.filter((p) => p.id !== patientId);
-          const inClinicGroup = others.filter((p) => p.inClinic);
-          const notInClinicGroup = others.filter((p) => !p.inClinic);
-
-          return [...inClinicGroup, ...notInClinicGroup, updatedPatient];
-        });
-      }
-
-      // Sync completed ids to cloud
-      supabaseService.syncCompletedQueueToCloud(nextCompleted);
-
-      return nextCompleted;
-    });
+    setCompletedQueueIds((prev) =>
+      prev.includes(patientId) ? prev.filter((id) => id !== patientId) : [...prev, patientId]
+    );
   };
 
   const handleToggleInClinic = (patientId: string) => {
@@ -377,44 +332,31 @@ export function App() {
 
       const isNowInClinic = !target.inClinic;
       const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      // Calculate maxOrder among currently in-clinic patients
-      const currentInClinic = prev.filter((p) => p.inClinic && p.id !== patientId);
-      const maxOrder = Math.max(0, ...currentInClinic.map((p) => p.inClinicOrder || 0));
 
       const updatedPatient: Patient = {
         ...target,
         inClinic: isNowInClinic,
-        inClinicTime: isNowInClinic ? nowTime : undefined,
-        inClinicTimestamp: isNowInClinic ? Date.now() : undefined,
-        inClinicOrder: isNowInClinic ? (maxOrder + 1) : undefined
+        inClinicTime: isNowInClinic ? nowTime : undefined
       };
 
-      // Immediately sync this individual change to Supabase
-      supabaseService.saveSinglePatientToCloud(updatedPatient);
-
-      const others = prev.filter((p) => p.id !== patientId);
-      const inClinicGroup = others.filter((p) => p.inClinic);
-      const notInClinicGroup = others.filter((p) => !p.inClinic);
-
       if (isNowInClinic) {
-        return [...inClinicGroup, updatedPatient, ...notInClinicGroup];
+        // Move to the top of the queue right after any patients already in clinic
+        const others = prev.filter((p) => p.id !== patientId);
+        const alreadyInClinic = others.filter((p) => p.inClinic);
+        const notInClinic = others.filter((p) => !p.inClinic);
+        return [...alreadyInClinic, updatedPatient, ...notInClinic];
       } else {
-        return [...inClinicGroup, ...notInClinicGroup, updatedPatient];
+        // If untoggled, preserve others and put this patient with the non-in-clinic group
+        const others = prev.filter((p) => p.id !== patientId);
+        const alreadyInClinic = others.filter((p) => p.inClinic);
+        const notInClinic = others.filter((p) => !p.inClinic);
+        return [...alreadyInClinic, ...notInClinic, updatedPatient];
       }
     });
   };
 
   const handleReorderPatients = (newOrder: Patient[]) => {
-    let orderCounter = 1;
-    const reordered = newOrder.map((p) => {
-      if (p.inClinic) {
-        return { ...p, inClinicOrder: orderCounter++ };
-      }
-      return { ...p, inClinicOrder: undefined };
-    });
-    setPatients(reordered);
-    storage.setPatients(reordered);
-    supabaseService.syncPatientsToCloud(reordered);
+    setPatients(newOrder);
   };
 
   const handleLogout = () => {
@@ -616,32 +558,17 @@ export function App() {
 
   // Add or Edit Patient
   const handleSavePatient = (savedPatient: Patient) => {
-    const currentInClinic = patients.filter((p) => p.inClinic && p.id !== savedPatient.id);
-    const maxOrder = Math.max(0, ...currentInClinic.map((p) => p.inClinicOrder || 0));
-    const patientWithOrder = {
-      ...savedPatient,
-      inClinicTimestamp: savedPatient.inClinic ? (savedPatient.inClinicTimestamp || Date.now()) : undefined,
-      inClinicOrder: savedPatient.inClinic ? (savedPatient.inClinicOrder || maxOrder + 1) : undefined
-    };
-
-    // Trigger instant Supabase save
-    supabaseService.saveSinglePatientToCloud(patientWithOrder).then((success) => {
-      if (!success) {
-        console.warn('Could not save patient directly to Supabase. Check RLS policies or credentials.');
-      }
-    });
-
     setPatients((prev) => {
-      const exists = prev.some((p) => p.id === patientWithOrder.id);
+      const exists = prev.some((p) => p.id === savedPatient.id);
       if (exists) {
-        return prev.map((p) => (p.id === patientWithOrder.id ? patientWithOrder : p));
+        return prev.map((p) => (p.id === savedPatient.id ? savedPatient : p));
       }
-      if (patientWithOrder.inClinic) {
+      if (savedPatient.inClinic) {
         const alreadyInClinic = prev.filter((p) => p.inClinic);
         const notInClinic = prev.filter((p) => !p.inClinic);
-        return [...alreadyInClinic, patientWithOrder, ...notInClinic];
+        return [...alreadyInClinic, savedPatient, ...notInClinic];
       }
-      return [...prev, patientWithOrder];
+      return [...prev, savedPatient];
     });
     setSelectedPatientId(savedPatient.id);
     setEditingPatient(null);
@@ -651,14 +578,11 @@ export function App() {
     setPatients((prev) => {
       const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const todayDate = new Date().toISOString().split('T')[0];
-      const maxOrder = Math.max(0, ...prev.map((p) => p.inClinicOrder || 0));
 
       const updatedTarget: Patient = {
         ...existingPatient,
         inClinic: true,
         inClinicTime: nowTime,
-        inClinicTimestamp: existingPatient.inClinicTimestamp || Date.now(),
-        inClinicOrder: existingPatient.inClinicOrder || (maxOrder + 1),
         lastVisit: todayDate,
         treatmentType: treatmentType || existingPatient.treatmentType || 'General Care'
       };
@@ -833,10 +757,10 @@ export function App() {
       const isTarget = roomId
         ? room.id === roomId
         : (
-            room.doctorName === doctorProfile.name ||
-            (activeClinic && room.name.toLowerCase() === activeClinic.toLowerCase()) ||
-            room.doctorName === INITIAL_DOCTOR.name
-          );
+          room.doctorName === doctorProfile.name ||
+          (activeClinic && room.name.toLowerCase() === activeClinic.toLowerCase()) ||
+          room.doctorName === INITIAL_DOCTOR.name
+        );
 
       if (isTarget) {
         return {
@@ -915,146 +839,146 @@ export function App() {
             {/* ==================================================== */}
             {/* A. DOCTOR PORTAL PAGES                               */}
             {/* ==================================================== */}
-              {userRole === 'doctor' && (
-                <>
-                  {/* Doctor Dashboard */}
-                  {currentView === 'doctor-dashboard' && (
-                    <DoctorDashboard
-                      patients={patients}
-                      clinics={clinics}
-                      doctorProfile={doctorProfile}
-                      activeClinic={activeClinic}
-                      onUpdateActiveClinic={handleUpdateActiveClinic}
-                      completedPatientIds={completedQueueIds}
-                      onTogglePatientCompleted={handleTogglePatientCompleted}
-                      onToggleInClinic={handleToggleInClinic}
-                      onReorderPatients={handleReorderPatients}
-                      onDeleteVisit={handleDeleteVisit}
-                      onSelectPatient={(p) => {
-                        setSelectedPatientId(p.id);
-                        setCurrentView('doctor-patient-profile');
-                      }}
-                      onNavigate={(v) => setCurrentView(v)}
-                      onAddPatient={handleOpenNewPatient}
-                      onScheduleVisit={handleOpenScheduleVisit}
-                      onAssignDoctor={handleAssignDoctor}
-                      onVacateDoctor={handleVacateDoctor}
-                    />
-                  )}
+            {userRole === 'doctor' && (
+              <>
+                {/* Doctor Dashboard */}
+                {currentView === 'doctor-dashboard' && (
+                  <DoctorDashboard
+                    patients={patients}
+                    clinics={clinics}
+                    doctorProfile={doctorProfile}
+                    activeClinic={activeClinic}
+                    onUpdateActiveClinic={handleUpdateActiveClinic}
+                    completedPatientIds={completedQueueIds}
+                    onTogglePatientCompleted={handleTogglePatientCompleted}
+                    onToggleInClinic={handleToggleInClinic}
+                    onReorderPatients={handleReorderPatients}
+                    onDeleteVisit={handleDeleteVisit}
+                    onSelectPatient={(p) => {
+                      setSelectedPatientId(p.id);
+                      setCurrentView('doctor-patient-profile');
+                    }}
+                    onNavigate={(v) => setCurrentView(v)}
+                    onAddPatient={handleOpenNewPatient}
+                    onScheduleVisit={handleOpenScheduleVisit}
+                    onAssignDoctor={handleAssignDoctor}
+                    onVacateDoctor={handleVacateDoctor}
+                  />
+                )}
 
-                  {/* Patients Directory */}
-                  {currentView === 'doctor-patients' && (
-                    <PatientTable
-                      patients={patients}
-                      onSelectPatient={(p) => {
-                        setSelectedPatientId(p.id);
-                        setCurrentView('doctor-patient-profile');
-                      }}
-                      onAddPatient={handleOpenNewPatient}
-                    />
-                  )}
+                {/* Patients Directory */}
+                {currentView === 'doctor-patients' && (
+                  <PatientTable
+                    patients={patients}
+                    onSelectPatient={(p) => {
+                      setSelectedPatientId(p.id);
+                      setCurrentView('doctor-patient-profile');
+                    }}
+                    onAddPatient={handleOpenNewPatient}
+                  />
+                )}
 
-                  {/* Patient Profile & FDI Dental Chart */}
-                  {currentView === 'doctor-patient-profile' && (
-                    <PatientProfile
-                      patient={activePatient}
-                      onBack={() => setCurrentView('doctor-patients')}
-                      onUpdatePatient={handleSavePatient}
-                      onUpdateTooth={handleUpdateTooth}
-                      onBatchUpdateTeeth={handleBatchUpdateTeeth}
-                      onAddVisit={() => setIsConsultationOpen(true)}
-                      onScheduleVisit={handleOpenScheduleVisit}
-                      onDeleteVisit={(visitId) => handleDeleteVisit(activePatient.id, visitId)}
-                      onUploadImage={() => setIsUploadImageOpen(true)}
-                      onEditPatient={() => handleOpenEditPatient(activePatient)}
-                      isReadOnly={false}
-                    />
-                  )}
+                {/* Patient Profile & FDI Dental Chart */}
+                {currentView === 'doctor-patient-profile' && (
+                  <PatientProfile
+                    patient={activePatient}
+                    onBack={() => setCurrentView('doctor-patients')}
+                    onUpdatePatient={handleSavePatient}
+                    onUpdateTooth={handleUpdateTooth}
+                    onBatchUpdateTeeth={handleBatchUpdateTeeth}
+                    onAddVisit={() => setIsConsultationOpen(true)}
+                    onScheduleVisit={handleOpenScheduleVisit}
+                    onDeleteVisit={(visitId) => handleDeleteVisit(activePatient.id, visitId)}
+                    onUploadImage={() => setIsUploadImageOpen(true)}
+                    onEditPatient={() => handleOpenEditPatient(activePatient)}
+                    isReadOnly={false}
+                  />
+                )}
 
-                  {/* Visits & Schedule */}
-                  {currentView === 'doctor-visits' && (
-                    <VisitsView
-                      patients={patients}
-                      onSelectPatient={(p) => {
-                        setSelectedPatientId(p.id);
-                        setCurrentView('doctor-patient-profile');
-                      }}
-                      onNewConsultation={() => handleOpenScheduleVisit(activePatient)}
-                      onDeleteVisit={handleDeleteVisit}
-                    />
-                  )}
+                {/* Visits & Schedule */}
+                {currentView === 'doctor-visits' && (
+                  <VisitsView
+                    patients={patients}
+                    onSelectPatient={(p) => {
+                      setSelectedPatientId(p.id);
+                      setCurrentView('doctor-patient-profile');
+                    }}
+                    onNewConsultation={() => handleOpenScheduleVisit(activePatient)}
+                    onDeleteVisit={handleDeleteVisit}
+                  />
+                )}
 
-                  {/* Clinic Operatory Status */}
-                  {currentView === 'doctor-clinics' && (
-                    <ClinicStatusView
-                      clinics={clinics}
-                      onAssignDoctor={handleAssignDoctor}
-                      onVacateDoctor={handleVacateDoctor}
-                      currentDoctorName={doctorProfile.name}
-                    />
-                  )}
+                {/* Clinic Operatory Status */}
+                {currentView === 'doctor-clinics' && (
+                  <ClinicStatusView
+                    clinics={clinics}
+                    onAssignDoctor={handleAssignDoctor}
+                    onVacateDoctor={handleVacateDoctor}
+                    currentDoctorName={doctorProfile.name}
+                  />
+                )}
 
-                  {/* Doctor & Clinic Settings */}
-                  {currentView === 'doctor-settings' && (
-                    <DoctorSettingsView
-                      doctorProfile={doctorProfile}
-                      onUpdateDoctorProfile={handleUpdateDoctorProfile}
-                      clinics={clinics}
-                    />
-                  )}
-                </>
-              )}
+                {/* Doctor & Clinic Settings */}
+                {currentView === 'doctor-settings' && (
+                  <DoctorSettingsView
+                    doctorProfile={doctorProfile}
+                    onUpdateDoctorProfile={handleUpdateDoctorProfile}
+                    clinics={clinics}
+                  />
+                )}
+              </>
+            )}
 
-              {/* ==================================================== */}
-              {/* B. PATIENT PORTAL PAGES                              */}
-              {/* ==================================================== */}
-              {userRole === 'patient' && (
-                <>
-                  {/* Patient Dashboard */}
-                  {currentView === 'patient-dashboard' && (
-                    <PatientDashboard
-                      patient={activePatient}
-                      clinics={clinics}
-                      doctorProfile={doctorProfile}
-                      onNavigate={(v) => setCurrentView(v)}
-                      onBookAppointment={() => {
-                        setCurrentView('patient-visits');
-                      }}
-                    />
-                  )}
+            {/* ==================================================== */}
+            {/* B. PATIENT PORTAL PAGES                              */}
+            {/* ==================================================== */}
+            {userRole === 'patient' && (
+              <>
+                {/* Patient Dashboard */}
+                {currentView === 'patient-dashboard' && (
+                  <PatientDashboard
+                    patient={activePatient}
+                    clinics={clinics}
+                    doctorProfile={doctorProfile}
+                    onNavigate={(v) => setCurrentView(v)}
+                    onBookAppointment={() => {
+                      setCurrentView('patient-visits');
+                    }}
+                  />
+                )}
 
-                  {/* Patient Dental Chart & Diagnostic Imaging */}
-                  {currentView === 'patient-chart' && (
-                    <PatientDentalRecord
-                      patient={activePatient}
-                      onBookConsultation={() => {
-                        setCurrentView('patient-visits');
-                      }}
-                    />
-                  )}
+                {/* Patient Dental Chart & Diagnostic Imaging */}
+                {currentView === 'patient-chart' && (
+                  <PatientDentalRecord
+                    patient={activePatient}
+                    onBookConsultation={() => {
+                      setCurrentView('patient-visits');
+                    }}
+                  />
+                )}
 
-                  {/* Patient Visits & History (View Only) */}
-                  {currentView === 'patient-visits' && (
-                    <PatientVisitsView
-                      patient={activePatient}
-                      onBookAppointment={() => {
-                        setCurrentView('patient-dashboard');
-                      }}
-                    />
-                  )}
+                {/* Patient Visits & History (View Only) */}
+                {currentView === 'patient-visits' && (
+                  <PatientVisitsView
+                    patient={activePatient}
+                    onBookAppointment={() => {
+                      setCurrentView('patient-dashboard');
+                    }}
+                  />
+                )}
 
-                  {/* Patient Health Profile & Dossier */}
-                  {currentView === 'patient-profile' && (
-                    <PatientProfile
-                      patient={activePatient}
-                      onBack={() => setCurrentView('patient-dashboard')}
-                      onUpdateTooth={handleUpdateTooth}
-                      isReadOnly={true}
-                    />
-                  )}
-                </>
-              )}
-            </main>
+                {/* Patient Health Profile & Dossier */}
+                {currentView === 'patient-profile' && (
+                  <PatientProfile
+                    patient={activePatient}
+                    onBack={() => setCurrentView('patient-dashboard')}
+                    onUpdateTooth={handleUpdateTooth}
+                    isReadOnly={true}
+                  />
+                )}
+              </>
+            )}
+          </main>
         </div>
       )}
 
