@@ -37,6 +37,11 @@ const ARABIC_MONTHS = [
   'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
 ];
 
+const ARABIC_MONTH_MAP: Record<string, number> = {
+  'يناير': 0, 'فبراير': 1, 'مارس': 2, 'أبريل': 3, 'ابريل': 3, 'مايو': 4, 'يونيو': 5,
+  'يوليو': 6, 'أغسطس': 7, 'اغسطس': 7, 'سبتمبر': 8, 'أكتوبر': 9, 'اكتوبر': 9, 'نوفمبر': 10, 'ديسمبر': 11
+};
+
 export function parseAppointmentDate(dateStr?: string): Date | null {
   if (!dateStr || typeof dateStr !== 'string') return null;
 
@@ -47,6 +52,20 @@ export function parseAppointmentDate(dateStr?: string): Date | null {
   const standardParsed = new Date(trimmed);
   if (!isNaN(standardParsed.getTime())) {
     return standardParsed;
+  }
+
+  // Try Arabic month parsing e.g. "26 أغسطس 2026" or "26 أغسطس"
+  for (const [arMonth, mIdx] of Object.entries(ARABIC_MONTH_MAP)) {
+    if (trimmed.includes(arMonth)) {
+      const numbers = trimmed.match(/\d+/g);
+      if (numbers && numbers.length >= 1) {
+        const day = parseInt(numbers[0], 10);
+        const year = numbers.length >= 2 ? parseInt(numbers[1], 10) : new Date().getFullYear();
+        if (!isNaN(day) && day >= 1 && day <= 31) {
+          return new Date(year, mIdx, day);
+        }
+      }
+    }
   }
 
   // Try "DD MMM YYYY" pattern e.g. "01 Sep 2026" or "28 Aug 2026"

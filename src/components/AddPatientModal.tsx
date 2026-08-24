@@ -10,6 +10,7 @@ interface AddPatientModalProps {
   initialPatient?: Patient | null;
   existingPatients?: Patient[];
   activeClinic?: string;
+  doctorName?: string;
   onSelectExistingPatient?: (patient: Patient, treatmentType?: string) => void;
 }
 
@@ -20,6 +21,7 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
   initialPatient,
   existingPatients = [],
   activeClinic = 'Clinic 1',
+  doctorName = 'Dr.',
   onSelectExistingPatient
 }) => {
   const { t, isRTL } = useAppThemeLanguage();
@@ -69,6 +71,7 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
       setAge('30');
       setPhone('');
       setTreatmentType('Cleaning');
+      setTargetClinic(activeClinic || 'Clinic 1');
       setMedicalNotes('');
       setPreviewNumericId(Math.floor(100000 + Math.random() * 900000).toString());
       setCreatedCredentials(null);
@@ -174,6 +177,16 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
     } else {
       const assignedId = previewNumericId || Math.floor(100000 + Math.random() * 900000).toString();
 
+      const initialVisitRecord = {
+        id: `v-${Date.now()}`,
+        date: today,
+        doctorName: doctorName,
+        procedure: treatmentType || 'Routine Consultation',
+        notes: '',
+        status: 'in-progress' as const,
+        clinicRoom: targetClinic
+      };
+
       const newPatient: Patient = {
         id: assignedId,
         name,
@@ -189,7 +202,7 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
         inClinic: true,
         inClinicTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         teeth: {},
-        visits: [],
+        visits: [initialVisitRecord],
         images: []
       };
       onAddPatient(newPatient);

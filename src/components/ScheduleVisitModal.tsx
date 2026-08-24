@@ -33,6 +33,7 @@ interface ScheduleVisitModalProps {
     notes?: string
   ) => void;
   preselectedPatientId?: string;
+  preselectedDateISO?: string | null;
 }
 
 export const ScheduleVisitModal: React.FC<ScheduleVisitModalProps> = ({
@@ -44,7 +45,8 @@ export const ScheduleVisitModal: React.FC<ScheduleVisitModalProps> = ({
   activeClinic,
   onSchedule,
   onScheduleVisit,
-  preselectedPatientId
+  preselectedPatientId,
+  preselectedDateISO
 }) => {
   const { t, isRTL } = useAppThemeLanguage();
 
@@ -59,8 +61,9 @@ export const ScheduleVisitModal: React.FC<ScheduleVisitModalProps> = ({
   // Calculate dynamic days of the week relative to today
   const weekdayOptions = useMemo(() => getUpcomingWeekdays(weekOffset), [weekOffset]);
 
-  // Default to tomorrow or today's date
+  // Default date state
   const [selectedDateISO, setSelectedDateISO] = useState<string>(() => {
+    if (preselectedDateISO) return preselectedDateISO;
     const d = new Date();
     d.setDate(d.getDate() + 1);
     return formatDateISO(d);
@@ -84,10 +87,13 @@ export const ScheduleVisitModal: React.FC<ScheduleVisitModalProps> = ({
   const [notes, setNotes] = useState('Check healing progress, seat final prosthesis, and oral hygiene check.');
 
   useEffect(() => {
-    if (activeClinic) {
-      setClinicRoom(activeClinic);
+    if (isOpen) {
+      if (preselectedDateISO) {
+        setSelectedDateISO(preselectedDateISO);
+      }
+      setClinicRoom(activeClinic || defaultClinicName);
     }
-  }, [activeClinic, isOpen]);
+  }, [isOpen, preselectedDateISO, activeClinic, defaultClinicName]);
 
   useEffect(() => {
     if (selectedPatient?.id) {

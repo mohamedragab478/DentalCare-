@@ -1,10 +1,10 @@
 import { DoctorProfile, Patient, ClinicRoom } from '../types';
 import { INITIAL_DOCTOR, INITIAL_PATIENTS, CLINIC_ROOMS } from '../data/initialData';
 
-const DOCTOR_KEY = 'dentalcare_doctor_profile_v2';
-const PATIENTS_KEY = 'dentalcare_patients_v2';
-const CLINICS_KEY = 'dentalcare_clinics_v2';
-const QUEUE_KEY = 'dentalcare_completed_queue_v2';
+const DOCTOR_KEY = 'dentalcare_doctor_profile_v5';
+const PATIENTS_KEY = 'dentalcare_patients_v5';
+const CLINICS_KEY = 'dentalcare_clinics_v5';
+const QUEUE_KEY = 'dentalcare_completed_queue_v5';
 
 const DEFAULT_DOCTOR: DoctorProfile = {
   id: 'doc-01',
@@ -26,7 +26,7 @@ export const storage = {
     } catch (e) {
       console.warn('Failed to load doctor profile from localStorage', e);
     }
-    return DEFAULT_DOCTOR;
+    return INITIAL_DOCTOR || DEFAULT_DOCTOR;
   },
 
   setDoctorProfile: (profile: DoctorProfile) => {
@@ -41,11 +41,16 @@ export const storage = {
   getPatients: (): Patient[] => {
     try {
       const data = localStorage.getItem(PATIENTS_KEY);
-      if (data !== null) return JSON.parse(data);
+      if (data !== null) {
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
     } catch (e) {
       console.warn('Failed to load patients from localStorage', e);
     }
-    return [];
+    return INITIAL_PATIENTS;
   },
 
   setPatients: (patients: Patient[]) => {
@@ -60,7 +65,12 @@ export const storage = {
   getClinics: (): ClinicRoom[] => {
     try {
       const data = localStorage.getItem(CLINICS_KEY);
-      if (data) return JSON.parse(data);
+      if (data !== null) {
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
     } catch (e) {
       console.warn('Failed to load clinics from localStorage', e);
     }

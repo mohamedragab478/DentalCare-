@@ -20,6 +20,7 @@ import { UploadImageModal } from './components/UploadImageModal';
 import { ScheduleVisitModal } from './components/ScheduleVisitModal';
 import { SelectClinicModal } from './components/SelectClinicModal';
 import { useAppThemeLanguage } from './context/ThemeLanguageContext';
+import { formatDateISO } from './utils/dateUtils';
 
 export function App() {
   const { isRTL } = useAppThemeLanguage();
@@ -262,6 +263,7 @@ export function App() {
   const [isScheduleVisitOpen, setIsScheduleVisitOpen] = useState(false);
   const [isSelectClinicOpen, setIsSelectClinicOpen] = useState(false);
   const [scheduleTargetPatient, setScheduleTargetPatient] = useState<Patient | null>(null);
+  const [schedulePreselectedDate, setSchedulePreselectedDate] = useState<string | null>(null);
 
   // Current active patient
   const activePatient = patients.find((p) => p.id === selectedPatientId) || patients[0];
@@ -489,9 +491,24 @@ export function App() {
     setIsConsultationOpen(false);
   };
 
-  // Schedule Next Visit (with Day 28 preset)
-  const handleOpenScheduleVisit = (patient?: Patient) => {
-    setScheduleTargetPatient(patient || activePatient);
+  // Schedule Next Visit
+  const handleOpenScheduleVisit = (patient?: Patient, preselectedDate?: Date | string) => {
+    setScheduleTargetPatient(patient || activePatient || patients[0] || null);
+    if (preselectedDate) {
+      if (typeof preselectedDate === 'string') {
+        setSchedulePreselectedDate(preselectedDate);
+      } else if (preselectedDate instanceof Date) {
+        try {
+          setSchedulePreselectedDate(formatDateISO(preselectedDate));
+        } catch {
+          setSchedulePreselectedDate(null);
+        }
+      } else {
+        setSchedulePreselectedDate(null);
+      }
+    } else {
+      setSchedulePreselectedDate(null);
+    }
     setIsScheduleVisitOpen(true);
   };
 
@@ -499,8 +516,8 @@ export function App() {
     patientId: string,
     date: string,
     time: string,
-    clinic: string,
     procedure: string,
+    clinicRoom: string,
     notes: string
   ) => {
     const newVisit: VisitRecord = {
@@ -508,7 +525,7 @@ export function App() {
       date: date,
       procedure: procedure || 'Scheduled Dental Checkup',
       doctorName: doctorProfile.name,
-      clinicRoom: clinic,
+      clinicRoom: clinicRoom,
       notes: notes || 'Upcoming scheduled appointment',
       status: 'scheduled'
     };
@@ -520,7 +537,7 @@ export function App() {
             ...p,
             nextVisit: date,
             nextVisitTime: time,
-            attendingClinic: clinic,
+            attendingClinic: clinicRoom,  // update clinic so patient appears in correct queue
             attendingDoctor: doctorProfile.name,
             treatmentType: procedure || p.treatmentType,
             visits: [newVisit, ...p.visits]
@@ -625,6 +642,9 @@ export function App() {
   // Clinic & Doctor Profile State Synchronization
   const handleUpdateDoctorProfile = (updated: DoctorProfile) => {
     setDoctorProfile(updated);
+    if (updated.assignedClinic) {
+      setActiveClinic(updated.assignedClinic);
+    }
 
     // 1. Synchronize Clinics Live Roster State
     setClinics((prev) =>
@@ -690,6 +710,7 @@ export function App() {
     }
 
     const newClinicName = targetRoom.name;
+    setActiveClinic(newClinicName);
 
     // Update Doctor Profile assigned clinic
     setDoctorProfile((prev) => ({
@@ -1002,6 +1023,7 @@ export function App() {
         onAddPatient={handleSavePatient}
         existingPatients={patients}
         activeClinic={activeClinic}
+        doctorName={doctorProfile.name}
         onSelectExistingPatient={handleSelectExistingPatientToQueue}
         initialPatient={editingPatient}
       />
@@ -1017,11 +1039,13 @@ export function App() {
         onClose={() => {
           setIsScheduleVisitOpen(false);
           setScheduleTargetPatient(null);
+          setSchedulePreselectedDate(null);
         }}
         patients={patients}
         clinics={clinics}
         activeClinic={activeClinic}
         selectedPatient={scheduleTargetPatient || activePatient}
+        preselectedDateISO={schedulePreselectedDate}
         onSchedule={handleConfirmScheduleVisit}
       />
 

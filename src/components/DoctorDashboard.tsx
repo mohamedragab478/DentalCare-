@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Patient, ClinicRoom, DoctorProfile } from '../types';
 import { useAppThemeLanguage } from '../context/ThemeLanguageContext';
-import { getAppointmentCountdown, formatDateArabic } from '../utils/dateUtils';
+import { getAppointmentCountdown, formatDateArabic, parseAppointmentDate } from '../utils/dateUtils';
 
 interface DoctorDashboardProps {
   patients: Patient[];
@@ -17,7 +17,7 @@ interface DoctorDashboardProps {
   onSelectPatient: (patient: Patient) => void;
   onNavigate: (view: any) => void;
   onAddPatient?: () => void;
-  onScheduleVisit?: (patient?: Patient) => void;
+  onScheduleVisit?: (patient?: Patient, preselectedDate?: Date | string) => void;
   onAssignDoctor?: (roomId: number) => void;
   onVacateDoctor?: (roomId: number) => void;
 }
@@ -44,7 +44,6 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
 
   const [internalCompletedIds, setInternalCompletedIds] = useState<string[]>(['849202']);
   const [visitFilter, setVisitFilter] = useState<'All' | 'Completed' | 'Scheduled'>('All');
-  const [queueClinicFilter, setQueueClinicFilter] = useState<'ActiveClinic' | 'All'>('ActiveClinic');
   const [selectedDayKey, setSelectedDayKey] = useState<string>(() => {
     const todayNum = new Date().getDay();
     const dayMap: Record<number, string> = { 6: 'sat', 0: 'sun', 1: 'mon', 2: 'tue', 3: 'wed', 4: 'thu', 5: 'fri' };
@@ -89,9 +88,21 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
     });
   }, [isRTL]);
 
+  // Helper: check if an ISO or locale date string falls on the target date
+  const dateStrMatchesTarget = (dateStr: string, targetDate: Date): boolean => {
+    if (!dateStr) return false;
+    const parsed = parseAppointmentDate(dateStr) || new Date(dateStr);
+    if (parsed && !isNaN(parsed.getTime())) {
+      return (
+        parsed.getDate() === targetDate.getDate() &&
+        parsed.getMonth() === targetDate.getMonth() &&
+        parsed.getFullYear() === targetDate.getFullYear()
+      );
+    }
+    return false;
+  };
+
   const isPatientMatchingDate = (patient: Patient, dayObj: { targetDate: Date; arName: string; enName: string }) => {
-    if (!patient.nextVisit) return false;
-    const visitStr = patient.nextVisit.trim().toLowerCase();
     const { targetDate, arName, enName } = dayObj;
     const today = new Date();
 
@@ -107,26 +118,34 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
       targetDate.getMonth() === tomorrow.getMonth() &&
       targetDate.getFullYear() === tomorrow.getFullYear();
 
-    // 1. Keyword check
+    // 1. Match via visits[] array - any visit dated on targetDate
+    if (patient.visits && patient.visits.length > 0) {
+      const hasVisitOnDay = patient.visits.some((v) => dateStrMatchesTarget(v.date, targetDate));
+      if (hasVisitOnDay) return true;
+    }
+
+    // 2. Match via lastVisit (patients currently in queue today)
+    if (isTodayTarget && patient.lastVisit) {
+      if (dateStrMatchesTarget(patient.lastVisit, targetDate)) return true;
+    }
+
+    // 3. Match via nextVisit
+    if (!patient.nextVisit) return false;
+    const visitStr = patient.nextVisit.trim().toLowerCase();
+
+    // 3a. Keyword check
     if (isTodayTarget && (visitStr === 'today' || visitStr === 'اليوم')) return true;
     if (isTomorrowTarget && (visitStr === 'tomorrow' || visitStr === 'غداً' || visitStr === 'غدا')) return true;
 
-    // 2. Day name check (e.g., "السبت", "Saturday")
+    // 3b. Day name check (e.g., "السبت", "Saturday")
     if (visitStr.includes(arName.toLowerCase()) || visitStr.includes(enName.toLowerCase())) {
       return true;
     }
 
-    // 3. Direct Date parse check
-    const parsed = new Date(patient.nextVisit);
-    if (!isNaN(parsed.getTime())) {
-      return (
-        parsed.getDate() === targetDate.getDate() &&
-        parsed.getMonth() === targetDate.getMonth() &&
-        parsed.getFullYear() === targetDate.getFullYear()
-      );
-    }
+    // 3c. Direct Date parse check
+    if (dateStrMatchesTarget(patient.nextVisit, targetDate)) return true;
 
-    // 4. Substring day number & month check (e.g. "24 Aug" or "24/08")
+    // 3d. Substring day number & month check (e.g. "24 Aug" or "24/08")
     const dayNumStr = targetDate.getDate().toString();
     const padDayStr = dayNumStr.padStart(2, '0');
     if (visitStr.includes(padDayStr) || visitStr.includes(dayNumStr)) {
@@ -218,18 +237,94 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
 
   const [isCompletedOpen, setIsCompletedOpen] = useState<boolean>(false);
 
+  // Is the currently selected day button == today?
+  const isSelectedDayToday = useMemo(() => {
+    const todayObj = weekDaysWithDates.find((d) => d.isToday);
+    return todayObj ? selectedDayKey === todayObj.key : false;
+  }, [selectedDayKey, weekDaysWithDates]);
+
+  // Helper: Normalize clinic names (Arabic & English) into standard key (e.g. 'clinic 1')
+  const normalizeClinicKey = (clinicStr?: string): string => {
+    if (!clinicStr) return 'clinic 1';
+    const clean = clinicStr.trim().toLowerCase();
+
+    if (clean.includes('1') || clean.includes('١')) return 'clinic 1';
+    if (clean.includes('2') || clean.includes('٢')) return 'clinic 2';
+    if (clean.includes('3') || clean.includes('٣')) return 'clinic 3';
+    if (clean.includes('4') || clean.includes('٤')) return 'clinic 4';
+
+    return clean;
+  };
+
+  // Helper: Get strict clinic room for a patient on a specific date
+  const getPatientClinicRoomForDate = (patient: Patient, targetDate?: Date): string => {
+    // 1. Search patient's visits for a matching visit on targetDate with explicit clinicRoom
+    if (targetDate && patient.visits && patient.visits.length > 0) {
+      const dateVisit = patient.visits.find((v) => dateStrMatchesTarget(v.date, targetDate) && v.clinicRoom);
+      if (dateVisit && dateVisit.clinicRoom) {
+        return dateVisit.clinicRoom;
+      }
+    }
+
+    // 2. Search scheduled visits with explicit clinicRoom
+    if (patient.visits && patient.visits.length > 0) {
+      const scheduledVisit = patient.visits.find((v) => v.status === 'scheduled' && v.clinicRoom);
+      if (scheduledVisit && scheduledVisit.clinicRoom) {
+        return scheduledVisit.clinicRoom;
+      }
+      const latestWithRoom = patient.visits.find((v) => v.clinicRoom);
+      if (latestWithRoom && latestWithRoom.clinicRoom) {
+        return latestWithRoom.clinicRoom;
+      }
+    }
+
+    // 3. Fallback to attendingClinic
+    if (patient.attendingClinic && patient.attendingClinic.trim()) {
+      return patient.attendingClinic;
+    }
+
+    return 'Clinic 1';
+  };
+
+  // Helper: Check if patient matches BOTH targetClinic AND targetDate strictly
+  const isPatientMatchingClinicAndDate = (
+    patient: Patient,
+    targetClinic: string,
+    dayObj: { targetDate: Date; arName: string; enName: string }
+  ): boolean => {
+    // Step 1: Patient MUST match target date first
+    const matchesDate = isPatientMatchingDate(patient, dayObj);
+    if (!matchesDate) return false;
+
+    // Step 2: Patient MUST strictly match target clinic for this date
+    const patientClinic = getPatientClinicRoomForDate(patient, dayObj.targetDate);
+    const patientClinicKey = normalizeClinicKey(patientClinic);
+    const targetClinicKey = normalizeClinicKey(targetClinic);
+
+    return patientClinicKey === targetClinicKey;
+  };
+
+  const todayDayObj = useMemo(() => {
+    return weekDaysWithDates.find((d) => d.isToday) || weekDaysWithDates[0];
+  }, [weekDaysWithDates]);
+
   // Preserve inClinic patients at top, then notInClinic patients
   const displayedQueuePatients = useMemo(() => {
     const filtered = (patients || []).filter((p) => {
-      if (queueClinicFilter === 'All') return true;
-      return !p.attendingClinic || p.attendingClinic === effectiveClinic;
+      const patientClinicKey = normalizeClinicKey(p.attendingClinic || 'Clinic 1');
+      const activeClinicKey = normalizeClinicKey(effectiveClinic);
+
+      if (p.inClinic && patientClinicKey === activeClinicKey) {
+        return true;
+      }
+      return isPatientMatchingClinicAndDate(p, effectiveClinic, todayDayObj);
     });
 
     const inClinicList = filtered.filter((p) => p.inClinic);
     const notInClinicList = filtered.filter((p) => !p.inClinic);
 
     return [...inClinicList, ...notInClinicList];
-  }, [patients, queueClinicFilter, effectiveClinic]);
+  }, [patients, effectiveClinic, todayDayObj]);
 
   const activeQueuePatients = useMemo(() => {
     return displayedQueuePatients.filter((p) => !finishedIds.includes(p.id));
@@ -245,26 +340,18 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
     const selectedDayObj = weekDaysWithDates.find((d) => d.key === selectedDayKey);
     if (!selectedDayObj) return [];
 
-    return patients.filter((p) => {
-      const matchesClinic = queueClinicFilter === 'All' || !p.attendingClinic || p.attendingClinic === effectiveClinic;
-      if (!matchesClinic) return false;
-      return isPatientMatchingDate(p, selectedDayObj);
-    });
-  }, [patients, queueClinicFilter, effectiveClinic, selectedDayKey, weekDaysWithDates]);
+    return patients.filter((p) => isPatientMatchingClinicAndDate(p, effectiveClinic, selectedDayObj));
+  }, [patients, effectiveClinic, selectedDayKey, weekDaysWithDates]);
 
   const dayCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    const filteredForClinic = patients.filter((p) => {
-      if (queueClinicFilter === 'All') return true;
-      return !p.attendingClinic || p.attendingClinic === effectiveClinic;
-    });
 
     weekDaysWithDates.forEach((d) => {
-      counts[d.key] = filteredForClinic.filter((p) => isPatientMatchingDate(p, d)).length;
+      counts[d.key] = patients.filter((p) => isPatientMatchingClinicAndDate(p, effectiveClinic, d)).length;
     });
 
     return counts;
-  }, [patients, queueClinicFilter, effectiveClinic, weekDaysWithDates]);
+  }, [patients, effectiveClinic, weekDaysWithDates]);
 
   return (
     <div className="max-w-7xl mx-auto w-full space-y-8 animate-in fade-in duration-200 transition-colors">
@@ -293,8 +380,14 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
 
           {onAddPatient && (
             <button
-              onClick={onAddPatient}
-              className="bg-[#006194] hover:bg-[#004b73] text-white px-4 py-2.5 rounded-xl font-bold text-xs transition-colors flex items-center gap-2 cursor-pointer"
+              onClick={isSelectedDayToday ? onAddPatient : undefined}
+              disabled={!isSelectedDayToday}
+              title={isSelectedDayToday ? '' : (isRTL ? 'لا يمكن إضافة مريض إلا في اليوم الحالي' : 'Can only add patients for today')}
+              className={`px-4 py-2.5 rounded-xl font-bold text-xs transition-colors flex items-center gap-2 ${
+                isSelectedDayToday
+                  ? 'bg-[#006194] hover:bg-[#004b73] text-white cursor-pointer'
+                  : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-60'
+              }`}
               id="dashboard-register-patient-btn"
             >
               <span className="material-symbols-outlined text-[18px]">person_add</span>
@@ -369,33 +462,41 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
             </div>
           </div>
 
-          {/* Clinic Queue Filter Pills */}
-          <div className="flex items-center gap-2 mb-4 bg-slate-50 dark:bg-slate-800 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs font-bold w-fit">
-            <button
-              type="button"
-              onClick={() => setQueueClinicFilter('ActiveClinic')}
-              className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${queueClinicFilter === 'ActiveClinic'
-                ? 'bg-[#006194] text-white shadow-2xs'
-                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
-                }`}
-            >
-              <span className="material-symbols-outlined text-[15px]">medical_services</span>
+          {/* Active Clinic Queue Header Badge */}
+          <div className="flex items-center gap-2 mb-4">
+            <span className="px-3.5 py-1.5 rounded-xl bg-[#006194] text-white text-xs font-bold shadow-2xs flex items-center gap-2">
+              <span className="material-symbols-outlined text-[16px]">medical_services</span>
               <span>{isRTL ? `طابور ${effectiveClinic.replace(/Clinic\s*(\d+)/i, 'العيادة $1')}` : `${effectiveClinic} Queue`}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setQueueClinicFilter('All')}
-              className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${queueClinicFilter === 'All'
-                ? 'bg-[#006194] text-white shadow-2xs'
-                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
-                }`}
-            >
-              <span className="material-symbols-outlined text-[15px]">groups</span>
-              <span>{isRTL ? "كافة العيادات" : "All Clinics"}</span>
-            </button>
+            </span>
           </div>
 
           <div className="space-y-3">
+            {selectedDayKey !== 'all' && (
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-blue-50/70 dark:bg-blue-950/40 p-3 rounded-2xl border border-blue-100 dark:border-blue-900/50 mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[#006194] dark:text-blue-400 text-lg">calendar_month</span>
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    {isRTL
+                      ? `مواعيد يوم ${weekDaysWithDates.find(d => d.key === selectedDayKey)?.arName} (${weekDaysWithDates.find(d => d.key === selectedDayKey)?.dateDisplay})`
+                      : `Appointments for ${weekDaysWithDates.find(d => d.key === selectedDayKey)?.enName} (${weekDaysWithDates.find(d => d.key === selectedDayKey)?.dateDisplay})`}
+                  </span>
+                  <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-[#006194] text-white">
+                    {selectedDayPatients.length}
+                  </span>
+                </div>
+                {onScheduleVisit && (
+                  <button
+                    type="button"
+                    onClick={() => onScheduleVisit(undefined, weekDaysWithDates.find(d => d.key === selectedDayKey)?.targetDate)}
+                    className="inline-flex items-center gap-1.5 bg-[#006194] hover:bg-[#004b73] text-white px-3.5 py-1.5 rounded-xl font-bold text-xs cursor-pointer shadow-2xs transition-all active:scale-95 shrink-0"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">calendar_add_on</span>
+                    <span>{isRTL ? "إضافة موعد جديد لهذا اليوم" : "Schedule New Appointment"}</span>
+                  </button>
+                )}
+              </div>
+            )}
+
             {selectedDayKey !== 'all' ? (
               /* Specific Day Filter Mode */
               selectedDayPatients.length === 0 ? (
@@ -406,16 +507,6 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                       ? `لا توجد مواعيد مسجلة ليوم (${weekDaysWithDates.find(d => d.key === selectedDayKey)?.arName}) الموافق (${weekDaysWithDates.find(d => d.key === selectedDayKey)?.dateDisplay}).`
                       : `No registered appointments for ${weekDaysWithDates.find(d => d.key === selectedDayKey)?.enName} (${weekDaysWithDates.find(d => d.key === selectedDayKey)?.dateDisplay}).`}
                   </p>
-                  {onScheduleVisit && (
-                    <button
-                      type="button"
-                      onClick={() => onScheduleVisit()}
-                      className="inline-flex items-center gap-1.5 bg-[#006194] hover:bg-[#004b73] text-white px-3.5 py-1.5 rounded-xl font-bold text-xs cursor-pointer shadow-xs"
-                    >
-                      <span className="material-symbols-outlined text-[16px]">calendar_add_on</span>
-                      <span>{isRTL ? "إضافة موعد جديد لهذا اليوم" : "Schedule New Appointment"}</span>
-                    </button>
-                  )}
                 </div>
               ) : (
                 selectedDayPatients.map((p, idx) => {
@@ -454,13 +545,13 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
 
                           <div className="flex items-center gap-2 flex-wrap text-xs text-slate-500 dark:text-slate-400 mt-1">
                             <span>{p.treatmentType || (isRTL ? 'كشف ومتابعة دورية' : 'Routine Consultation')} • {isRTL ? `العمر ${p.age} سنة` : `Age ${p.age}`}</span>
-                            {p.nextVisit && (
-                              <span className="inline-flex items-center gap-1 font-bold text-[#006194] dark:text-[#00a3e0] bg-blue-50 dark:bg-blue-950/80 px-2 py-0.5 rounded-md border border-blue-100 dark:border-blue-900/50">
-                                <span className="material-symbols-outlined text-[13px]">event</span>
-                                <span>{p.nextVisit}</span>
-                                {p.nextVisitTime && <span>({p.nextVisitTime})</span>}
-                              </span>
-                            )}
+                            <span className="inline-flex items-center gap-1 font-bold text-[#006194] dark:text-[#00a3e0] bg-blue-50 dark:bg-blue-950/80 px-2 py-0.5 rounded-md border border-blue-100 dark:border-blue-900/50">
+                              <span className="material-symbols-outlined text-[13px]">location_on</span>
+                              <span>{isRTL ? getPatientClinicRoomForDate(p, weekDaysWithDates.find(d => d.key === selectedDayKey)?.targetDate).replace(/Clinic\s*(\d+)/i, 'العيادة $1') : getPatientClinicRoomForDate(p, weekDaysWithDates.find(d => d.key === selectedDayKey)?.targetDate)}</span>
+                              <span className="material-symbols-outlined text-[13px] ms-1">event</span>
+                              <span>{p.nextVisit}</span>
+                              {p.nextVisitTime && <span>({p.nextVisitTime})</span>}
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -471,7 +562,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                         {onScheduleVisit && (
                           <button
                             type="button"
-                            onClick={() => onScheduleVisit(p)}
+                            onClick={() => onScheduleVisit(p, weekDaysWithDates.find(d => d.key === selectedDayKey)?.targetDate)}
                             className="flex-1 sm:flex-none px-3.5 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-[#006194] dark:text-[#00a3e0] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 border border-blue-100 dark:border-slate-700 active:scale-95 shrink-0"
                             title={isRTL ? "تحديد موعد جديد" : "Schedule Visit"}
                           >
@@ -556,15 +647,15 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
 
                         <div className="flex items-center gap-2 flex-wrap text-xs text-slate-500 dark:text-slate-400 mt-1">
                           <span>{p.treatmentType || (isRTL ? 'كشف ومتابعة دورية' : 'Routine Consultation')} • {isRTL ? `العمر ${p.age} سنة` : `Age ${p.age}`}</span>
-                          {p.nextVisit && (
                             <span className="inline-flex items-center gap-1 font-bold text-[#006194] dark:text-[#00a3e0] bg-blue-50 dark:bg-blue-950/80 px-2 py-0.5 rounded-md border border-blue-100 dark:border-blue-900/50">
-                              <span className="material-symbols-outlined text-[13px]">event</span>
+                              <span className="material-symbols-outlined text-[13px]">location_on</span>
+                              <span>{isRTL ? getPatientClinicRoomForDate(p, todayDayObj.targetDate).replace(/Clinic\s*(\d+)/i, 'العيادة $1') : getPatientClinicRoomForDate(p, todayDayObj.targetDate)}</span>
+                              <span className="material-symbols-outlined text-[13px] ms-1">event</span>
                               <span>{p.nextVisit}</span>
                               <span className="text-[10px] font-normal text-slate-500 dark:text-slate-400">
                                 ({isRTL ? countdown.badgeArabic : countdown.badgeEnglish})
                               </span>
                             </span>
-                          )}
                         </div>
                       </div>
                     </div>
