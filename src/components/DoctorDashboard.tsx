@@ -299,84 +299,68 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Patient Queue & Management (8 cols) */}
         <div className="lg:col-span-8 bg-white dark:bg-slate-900 rounded-3xl border border-[#e2e8f0] dark:border-slate-800 p-6 shadow-xs">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-4 mb-4">
-            <div>
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <h2 className="font-headline font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[#006194] dark:text-[#00a3e0]">format_list_numbered</span>
-                  <span>{t('appointment_queue')}</span>
-                </h2>
-                {displayedQueuePatients.filter(p => p.inClinic).length > 0 && (
-                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold border border-emerald-300 dark:border-emerald-800 flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                    <span>{displayedQueuePatients.filter(p => p.inClinic).length} {t('in_clinic')}</span>
+          <div className="border-b border-slate-100 dark:border-slate-800 pb-4 mb-4 space-y-3">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <div>
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <h2 className="font-headline font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[#006194] dark:text-[#00a3e0]">format_list_numbered</span>
+                    <span>{t('appointment_queue')}</span>
+                  </h2>
+                  {displayedQueuePatients.filter(p => p.inClinic).length > 0 && (
+                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold border border-emerald-300 dark:border-emerald-800 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                      <span>{displayedQueuePatients.filter(p => p.inClinic).length} {t('in_clinic')}</span>
+                    </span>
+                  )}
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold">
+                    {finishedIds.filter(id => displayedQueuePatients.some(p => p.id === id)).length}/{displayedQueuePatients.length} {t('finished')}
                   </span>
-                )}
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold">
-                  {finishedIds.filter(id => displayedQueuePatients.some(p => p.id === id)).length}/{displayedQueuePatients.length} {t('finished')}
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-[15px] text-[#006194] dark:text-[#00a3e0]">pan_tool</span>
-                <span>{t('drag_to_reorder')}</span>
-              </p>
-
-              {/* 7 Days Weekday Filter Buttons (السبت -> الجمعة) */}
-              <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
-                <div className="flex flex-wrap items-stretch gap-1.5">
-                  {weekDaysWithDates.map((day) => {
-                    const count = dayCounts[day.key] || 0;
-                    const isSelected = selectedDayKey === day.key;
-
-                    return (
-                      <button
-                        key={day.key}
-                        type="button"
-                        onClick={() => setSelectedDayKey(day.key)}
-                        className={`px-2.5 py-2 rounded-xl text-[11px] font-bold transition-all flex flex-col items-center justify-center gap-0.5 border cursor-pointer min-w-[70px] ${isSelected
-                          ? 'bg-[#006194] text-white border-[#006194]'
-                          : day.isToday
-                            ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100'
-                            : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-[#006194]'
-                        }`}
-                      >
-                        <div className="flex items-center gap-1">
-                          <span>{isRTL ? day.arName : day.enName}</span>
-                          {day.isToday && (
-                            <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-emerald-500 animate-ping'}`} />
-                          )}
-                        </div>
-                        <span className={`text-[9px] font-mono opacity-70`}>
-                          {day.dateDisplay}
-                        </span>
-                        {count > 0 && (
-                          <span className={`text-[9px] font-mono font-bold px-1.5 rounded-full ${isSelected ? 'bg-white/20 text-white' : 'bg-blue-100 dark:bg-blue-900 text-[#006194] dark:text-blue-200'}`}>
-                            {count}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
                 </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[15px] text-[#006194] dark:text-[#00a3e0]">pan_tool</span>
+                  <span>{t('drag_to_reorder')}</span>
+                </p>
               </div>
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              {onAddPatient && (
-                <button
-                  onClick={onAddPatient}
-                  className="bg-[#dae2fd] dark:bg-blue-950 text-[#006194] dark:text-blue-300 hover:bg-[#cce5ff] px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-2xs"
-                >
-                  <span className="material-symbols-outlined text-[16px]">person_add</span>
-                  <span>{t('new_patient')}</span>
-                </button>
-              )}
-              <button
-                onClick={() => onNavigate('doctor-patients')}
-                className="text-xs text-[#006194] dark:text-[#00a3e0] hover:underline font-semibold flex items-center gap-1 cursor-pointer"
-              >
-                <span>{t('all_patients')}</span>
-                <span className="material-symbols-outlined text-[16px]">chevron_right</span>
-              </button>
+
+            {/* 7 Days Weekday Filter Buttons (السبت -> الجمعة) Spanning Full Width */}
+            <div className="pt-2">
+              <div className="grid grid-cols-7 gap-1.5 sm:gap-2 w-full">
+                {weekDaysWithDates.map((day) => {
+                  const count = dayCounts[day.key] || 0;
+                  const isSelected = selectedDayKey === day.key;
+
+                  return (
+                    <button
+                      key={day.key}
+                      type="button"
+                      onClick={() => setSelectedDayKey(day.key)}
+                      className={`px-1 py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex flex-col items-center justify-center gap-0.5 border cursor-pointer w-full ${isSelected
+                        ? 'bg-[#006194] text-white border-[#006194] shadow-xs'
+                        : day.isToday
+                          ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100'
+                          : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-[#006194]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1">
+                        <span>{isRTL ? day.arName : day.enName}</span>
+                        {day.isToday && (
+                          <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-emerald-500 animate-ping'}`} />
+                        )}
+                      </div>
+                      <span className={`text-[9px] sm:text-[10px] font-mono opacity-75`}>
+                        {day.dateDisplay}
+                      </span>
+                      {count > 0 && (
+                        <span className={`text-[9px] sm:text-[10px] font-mono font-bold px-1.5 rounded-full ${isSelected ? 'bg-white/20 text-white' : 'bg-blue-100 dark:bg-blue-900 text-[#006194] dark:text-blue-200'}`}>
+                          {count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
