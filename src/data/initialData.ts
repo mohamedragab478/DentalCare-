@@ -127,7 +127,7 @@ export const INITIAL_PATIENTS: Patient[] = [
     birthDate: '12 May 1992',
     avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBjPiLDyWepU0CeZ8X8tIln_VVoHrQtBpyU8CiodPf3F7v4BwoQcpHQcQYAzQPGLjtRhljnPUN7UWpWts7Z9cw13fBY7FOdrq2AntU5wzQDzRpOLGsrVmX5g7cIZn-DxUOUuNPZ83xs-iLQObirdHXR0A0t5KUcZiOoTP4BNMOMdEutnr0mgJO-uOU3wJ98k7MRm-dTt8NHMhFnTDXibTruBygcqXVVBZHEzQlUS7eeDlfczpm5v0NK2g',
     lastVisit: '18 Aug 2026',
-    nextVisit: '01 Sep 2026',
+    nextVisit: '24 Aug 2026',
     nextVisitTime: '10:30 AM',
     attendingDoctor: 'Dr. Ahmed Al-Sayed',
     attendingClinic: 'Clinic 1',
@@ -148,38 +148,9 @@ export const INITIAL_PATIENTS: Patient[] = [
         status: 'completed',
         clinicRoom: 'Clinic 1',
         cost: 180
-      },
-      {
-        id: 'v-202',
-        date: '02 Jun 2026',
-        doctorName: 'Dr. Ahmed Al-Sayed',
-        procedure: 'Routine checkup & cleaning',
-        notes: 'General scale and polish completed. Advised flossing frequency increase.',
-        status: 'completed',
-        clinicRoom: 'Clinic 1',
-        cost: 110
-      },
-      {
-        id: 'v-203',
-        date: '15 Jan 2026',
-        doctorName: 'Dr. Ahmed Al-Sayed',
-        procedure: 'Consultation & X-ray review',
-        notes: 'Full mouth evaluation, identified incipient lesion on upper molar.',
-        status: 'completed',
-        clinicRoom: 'Clinic 1',
-        cost: 95
       }
     ],
-    images: [
-      {
-        id: 'img-panoramic',
-        title: 'Panoramic X-ray',
-        date: '12 May 2026',
-        url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCNUJfRvywofbv1G0KsVnD1hWkBS1MArwp6OLKVjZqEJNF28ij4qxEEq9SZGP1DBObE8hVjZPcl7IAqgCw7_x6vB5JBNMrHuBDyckX0ZydrRFcTa9qYfI6OjiDXV3wkLjjaqH7pWOh9LvsTT1rfrhJlWiX0qP97DTBABJhoiMvH06Qel_qGXCgCRDIKylpdsdOfCMkV4cvSP7V_WnVlSS-lhlb4hve4K-iERWoRkPwktmYkGiKOfp_lsg',
-        type: 'xray',
-        notes: 'Full jaw panoramic showing normal bone density and root anatomy.'
-      }
-    ]
+    images: []
   },
   {
     id: '102943',
@@ -190,45 +161,16 @@ export const INITIAL_PATIENTS: Patient[] = [
     phone: '01119876543',
     birthDate: '22 Feb 1994',
     lastVisit: '05 Sep 2025',
-    nextVisit: '15 Nov 2026',
+    nextVisit: '25 Aug 2026',
     nextVisitTime: '02:00 PM',
-    attendingDoctor: 'Dr. Mohamed Hassan',
-    attendingClinic: 'Clinic 2',
+    attendingDoctor: 'Dr. Ahmed Al-Sayed',
+    attendingClinic: 'Clinic 1',
     treatmentType: 'Orthodontics',
     inClinic: false,
     medicalNotes: 'Latex allergy reported. Advised to use nitrile gloves.',
     teeth: { ...DEFAULT_TEETH_MAP },
-    visits: [
-      {
-        id: 'v-102',
-        date: '05 Sep 2025',
-        doctorName: 'Dr. Mohamed Hassan',
-        procedure: 'Premolar composite restoration',
-        notes: 'Tooth #14 filled with resin composite.',
-        status: 'completed',
-        clinicRoom: 'Clinic 2',
-        cost: 210
-      },
-      {
-        id: 'v-103',
-        date: '15 Nov 2026',
-        doctorName: 'Dr. Mohamed Hassan',
-        procedure: 'Orthodontic adjustment',
-        notes: 'Follow-up aligner review.',
-        status: 'scheduled',
-        clinicRoom: 'Clinic 2'
-      }
-    ],
-    images: [
-      {
-        id: 'img-bitewing',
-        title: 'Bitewing X-ray',
-        date: '05 Sep 2025',
-        url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCNUJfRvywofbv1G0KsVnD1hWkBS1MArwp6OLKVjZqEJNF28ij4qxEEq9SZGP1DBObE8hVjZPcl7IAqgCw7_x6vB5JBNMrHuBDyckX0ZydrRFcTa9qYfI6OjiDXV3wkLjjaqH7pWOh9LvsTT1rfrhJlWiX0qP97DTBABJhoiMvH06Qel_qGXCgCRDIKylpdsdOfCMkV4cvSP7V_WnVlSS-lhlb4hve4K-iERWoRkPwktmYkGiKOfp_lsg',
-        type: 'bitewing',
-        notes: 'Bitewing view showing interproximal bone level.'
-      }
-    ]
+    visits: [],
+    images: []
   },
   {
     id: '102964',
@@ -239,35 +181,55 @@ export const INITIAL_PATIENTS: Patient[] = [
     phone: '01222223333',
     birthDate: '19 Jun 2002',
     lastVisit: '25 Oct 2025',
-    nextVisit: '02 Dec 2026',
+    nextVisit: '26 Aug 2026',
     nextVisitTime: '11:00 AM',
-    attendingDoctor: 'Dr. Mahmoud Ibrahim',
-    attendingClinic: 'Clinic 3',
+    attendingDoctor: 'Dr. Ahmed Al-Sayed',
+    attendingClinic: 'Clinic 1',
     treatmentType: 'Cleaning & Periodontics',
     inClinic: false,
     medicalNotes: 'Wisdom teeth check recommended in 6 months. Good oral hygiene.',
     teeth: { ...DEFAULT_TEETH_MAP },
-    visits: [
-      {
-        id: 'v-105',
-        date: '25 Oct 2025',
-        doctorName: 'Dr. Mahmoud Ibrahim',
-        procedure: 'Deep cleaning & periodontal assessment',
-        notes: 'Gingival health good, minor calculus lower anterior removed.',
-        status: 'completed',
-        clinicRoom: 'Clinic 3',
-        cost: 150
-      },
-      {
-        id: 'v-106',
-        date: '02 Dec 2026',
-        doctorName: 'Dr. Mahmoud Ibrahim',
-        procedure: 'Dental whitening consultation',
-        notes: 'Shade baseline recorded at A2.',
-        status: 'scheduled',
-        clinicRoom: 'Clinic 3'
-      }
-    ],
+    visits: [],
+    images: []
+  },
+  {
+    id: '102988',
+    name: 'تامر الجيار',
+    initials: 'TJ',
+    age: 38,
+    gender: 'Male',
+    phone: '01012345678',
+    birthDate: '10 Mar 1988',
+    lastVisit: '10 Aug 2026',
+    nextVisit: '27 Aug 2026',
+    nextVisitTime: '01:30 PM',
+    attendingDoctor: 'Dr. Ahmed Al-Sayed',
+    attendingClinic: 'Clinic 1',
+    treatmentType: 'Implants',
+    inClinic: false,
+    medicalNotes: 'Implant consultation and bone graft staging.',
+    teeth: { ...DEFAULT_TEETH_MAP },
+    visits: [],
+    images: []
+  },
+  {
+    id: '102999',
+    name: 'أبو الليف',
+    initials: 'AL',
+    age: 45,
+    gender: 'Male',
+    phone: '01098765432',
+    birthDate: '01 Jan 1981',
+    lastVisit: '12 Aug 2026',
+    nextVisit: '29 Aug 2026',
+    nextVisitTime: '04:00 PM',
+    attendingDoctor: 'Dr. Ahmed Al-Sayed',
+    attendingClinic: 'Clinic 1',
+    treatmentType: 'Crown & Bridge',
+    inClinic: false,
+    medicalNotes: 'Zirconia bridge shade selection.',
+    teeth: { ...DEFAULT_TEETH_MAP },
+    visits: [],
     images: []
   }
 ];

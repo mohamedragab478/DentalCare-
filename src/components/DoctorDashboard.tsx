@@ -87,9 +87,10 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
     });
   }, [isRTL]);
 
-  const isPatientMatchingDate = (patient: Patient, targetDate: Date) => {
+  const isPatientMatchingDate = (patient: Patient, dayObj: { targetDate: Date; arName: string; enName: string }) => {
     if (!patient.nextVisit) return false;
-    const visitStr = patient.nextVisit.trim();
+    const visitStr = patient.nextVisit.trim().toLowerCase();
+    const { targetDate, arName, enName } = dayObj;
     const today = new Date();
 
     const isTodayTarget =
@@ -97,17 +98,48 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
       targetDate.getMonth() === today.getMonth() &&
       targetDate.getFullYear() === today.getFullYear();
 
-    if (isTodayTarget && (visitStr.toLowerCase() === 'today' || visitStr === 'اليوم')) {
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    const isTomorrowTarget =
+      targetDate.getDate() === tomorrow.getDate() &&
+      targetDate.getMonth() === tomorrow.getMonth() &&
+      targetDate.getFullYear() === tomorrow.getFullYear();
+
+    // 1. Keyword check
+    if (isTodayTarget && (visitStr === 'today' || visitStr === 'اليوم')) return true;
+    if (isTomorrowTarget && (visitStr === 'tomorrow' || visitStr === 'غداً' || visitStr === 'غدا')) return true;
+
+    // 2. Day name check (e.g., "السبت", "Saturday")
+    if (visitStr.includes(arName.toLowerCase()) || visitStr.includes(enName.toLowerCase())) {
       return true;
     }
 
-    const parsed = new Date(visitStr);
+    // 3. Direct Date parse check
+    const parsed = new Date(patient.nextVisit);
     if (!isNaN(parsed.getTime())) {
       return (
         parsed.getDate() === targetDate.getDate() &&
         parsed.getMonth() === targetDate.getMonth() &&
         parsed.getFullYear() === targetDate.getFullYear()
       );
+    }
+
+    // 4. Substring day number & month check (e.g. "24 Aug" or "24/08")
+    const dayNumStr = targetDate.getDate().toString();
+    const padDayStr = dayNumStr.padStart(2, '0');
+    if (visitStr.includes(padDayStr) || visitStr.includes(dayNumStr)) {
+      const monthNumStr = (targetDate.getMonth() + 1).toString();
+      const padMonthStr = monthNumStr.padStart(2, '0');
+      const monthShortEn = targetDate.toLocaleDateString('en-US', { month: 'short' }).toLowerCase();
+
+      if (
+        visitStr.includes(monthShortEn) ||
+        visitStr.includes(`/${monthNumStr}`) ||
+        visitStr.includes(`/${padMonthStr}`) ||
+        visitStr.includes(`-${padMonthStr}`)
+      ) {
+        return true;
+      }
     }
 
     return false;
@@ -122,7 +154,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
     return patients.filter((p) => {
       const matchesClinic = queueClinicFilter === 'All' || !p.attendingClinic || p.attendingClinic === effectiveClinic;
       if (!matchesClinic) return false;
-      return isPatientMatchingDate(p, selectedDayObj.targetDate);
+      return isPatientMatchingDate(p, selectedDayObj);
     });
   }, [patients, queueClinicFilter, effectiveClinic, selectedDayKey, weekDaysWithDates]);
 
@@ -134,7 +166,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
     });
 
     weekDaysWithDates.forEach((d) => {
-      counts[d.key] = filteredForClinic.filter((p) => isPatientMatchingDate(p, d.targetDate)).length;
+      counts[d.key] = filteredForClinic.filter((p) => isPatientMatchingDate(p, d)).length;
     });
 
     return counts;
