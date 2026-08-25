@@ -143,6 +143,9 @@ export const translations = {
     completed_badge: "Completed",
     delete_visit_title: 'Delete Visit Record?',
     delete_visit_confirm: 'Are you sure you want to permanently delete this visit record?',
+    cancel_appointment: 'Cancel Appointment',
+    cancel_appointment_title: 'Cancel & Remove Appointment?',
+    cancel_appointment_confirm: 'Are you sure you want to cancel this appointment and remove it from today’s schedule and visit history?',
     no_visits_recorded: 'No visits recorded',
 
     // Patient Portal
@@ -341,6 +344,9 @@ export const translations = {
     completed_badge: 'تم الانتهاء',
     delete_visit_title: 'حذف سجل الزيارة؟',
     delete_visit_confirm: 'هل أنت متأكد من رغبتك في حذف سجل هذه الزيارة نهائياً؟',
+    cancel_appointment: 'إلغاء الموعد',
+    cancel_appointment_title: 'إلغاء وحذف الموعد؟',
+    cancel_appointment_confirm: 'هل أنت متأكد من رغبتك في إلغاء هذا الموعد وحذفه نهائياً من جدول اليوم وسجل الزيارات؟',
     no_visits_recorded: 'لا توجد زيارات مسجلة',
 
     // Patient Portal

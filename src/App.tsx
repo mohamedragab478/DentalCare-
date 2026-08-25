@@ -20,7 +20,7 @@ import { UploadImageModal } from './components/UploadImageModal';
 import { ScheduleVisitModal } from './components/ScheduleVisitModal';
 import { SelectClinicModal } from './components/SelectClinicModal';
 import { useAppThemeLanguage } from './context/ThemeLanguageContext';
-import { formatDateISO } from './utils/dateUtils';
+import { formatDateISO, parseAppointmentDate } from './utils/dateUtils';
 
 export function App() {
   const { isRTL } = useAppThemeLanguage();
@@ -571,6 +571,59 @@ export function App() {
     );
   };
 
+  // Cancel and Delete Appointment for specific date from schedule and history
+  const handleCancelAppointment = (patientId: string, targetDate?: Date | string) => {
+    setPatients((prev) => {
+      const updated = prev.map((p) => {
+        if (p.id === patientId) {
+          let remainingVisits = p.visits;
+          if (targetDate) {
+            remainingVisits = p.visits.filter((v) => {
+              if (!v.date) return true;
+              if (typeof targetDate === 'string') {
+                return v.date !== targetDate && !v.date.includes(targetDate);
+              } else if (targetDate instanceof Date) {
+                const parsed = parseAppointmentDate(v.date) || new Date(v.date);
+                if (parsed && !isNaN(parsed.getTime())) {
+                  const isSameDay =
+                    parsed.getDate() === targetDate.getDate() &&
+                    parsed.getMonth() === targetDate.getMonth() &&
+                    parsed.getFullYear() === targetDate.getFullYear();
+                  return !isSameDay;
+                }
+              }
+              return true;
+            });
+          } else {
+            remainingVisits = p.visits.filter((v) => v.status !== 'scheduled');
+          }
+
+          const completedVisits = remainingVisits.filter((v) => v.status === 'completed');
+          const remainingScheduled = remainingVisits.filter((v) => v.status === 'scheduled');
+
+          return {
+            ...p,
+            inClinic: false,
+            inClinicTime: undefined,
+            inClinicTimestamp: undefined,
+            inClinicOrder: undefined,
+            nextVisit: remainingScheduled.length > 0 ? remainingScheduled[0].date : undefined,
+            nextVisitTime: remainingScheduled.length > 0 ? p.nextVisitTime : undefined,
+            visits: remainingVisits,
+            lastVisit: completedVisits.length > 0 ? completedVisits[0].date : (remainingVisits.length > 0 ? remainingVisits[0].date : 'No visits')
+          };
+        }
+        return p;
+      });
+
+      storage.setPatients(updated);
+      supabaseService.syncPatientsToCloud(updated);
+      return updated;
+    });
+
+    setCompletedQueueIds((prev) => prev.filter((id) => id !== patientId));
+  };
+
   // Add or Edit Patient
   const handleSavePatient = (savedPatient: Patient) => {
     setPatients((prev) => {
@@ -873,6 +926,7 @@ export function App() {
                     onToggleInClinic={handleToggleInClinic}
                     onReorderPatients={handleReorderPatients}
                     onDeleteVisit={handleDeleteVisit}
+                    onCancelAppointment={handleCancelAppointment}
                     onSelectPatient={(p) => {
                       setSelectedPatientId(p.id);
                       setCurrentView('doctor-patient-profile');

@@ -14,6 +14,7 @@ interface DoctorDashboardProps {
   onToggleInClinic?: (patientId: string) => void;
   onReorderPatients?: (newOrder: Patient[]) => void;
   onDeleteVisit?: (patientId: string, visitId: string) => void;
+  onCancelAppointment?: (patientId: string, targetDate?: Date | string) => void;
   onSelectPatient: (patient: Patient) => void;
   onNavigate: (view: any) => void;
   onAddPatient?: () => void;
@@ -33,6 +34,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
   onToggleInClinic,
   onReorderPatients,
   onDeleteVisit,
+  onCancelAppointment,
   onSelectPatient,
   onNavigate,
   onAddPatient,
@@ -50,6 +52,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
     return dayMap[todayNum] || 'sat';
   });
   const [visitToDelete, setVisitToDelete] = useState<{ patientId: string; visitId: string; patientName: string; procedure: string } | null>(null);
+  const [appointmentToCancel, setAppointmentToCancel] = useState<{ patientId: string; patientName: string; targetDate?: Date; dateDisplay?: string; clinicRoom?: string } | null>(null);
 
   // 7 Days Weekday Filter Logic (Saturday -> Friday)
   const weekDaysConfig = [
@@ -532,11 +535,30 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                     return (
                       <div
                         key={p.id}
-                        className={`p-4 rounded-2xl border transition-all flex flex-col xl:flex-row xl:items-center justify-between gap-4 ${p.inClinic
+                        className={`relative p-4 rounded-2xl border transition-all flex flex-col xl:flex-row xl:items-center justify-between gap-4 ${p.inClinic
                           ? 'border-emerald-300 dark:border-emerald-800/80 bg-emerald-50/20 dark:bg-emerald-950/20 shadow-xs'
                           : 'border-slate-200 dark:border-slate-800 bg-[#f8fafc] dark:bg-slate-800/60 hover:bg-white dark:hover:bg-slate-800 hover:border-[#006194] dark:hover:border-slate-700'
                           }`}
                       >
+                        {/* Cancel Appointment X mark (matches modal close button style) */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAppointmentToCancel({
+                              patientId: p.id,
+                              patientName: p.name,
+                              targetDate: todayDayObj.targetDate,
+                              dateDisplay: todayDayObj.dateDisplay
+                            });
+                          }}
+                          className="w-8 h-8 rounded-full hover:bg-slate-200/70 dark:hover:bg-slate-700/70 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200 cursor-pointer transition-colors absolute top-2.5 rtl:left-2.5 ltr:right-2.5 z-10"
+                          title={t('cancel_appointment')}
+                          aria-label={t('cancel_appointment')}
+                        >
+                          <span className="material-symbols-outlined text-[20px]">close</span>
+                        </button>
+
                         <div className="flex items-center gap-3.5 flex-1 min-w-0">
                           {/* Index Number Badge */}
                           <div className="flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 shrink-0">
@@ -670,8 +692,27 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                   return (
                     <div
                       key={p.id}
-                      className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-[#f8fafc] dark:bg-slate-800/60 hover:bg-white dark:hover:bg-slate-800 transition-all flex flex-col xl:flex-row xl:items-center justify-between gap-4"
+                      className="relative p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-[#f8fafc] dark:bg-slate-800/60 hover:bg-white dark:hover:bg-slate-800 transition-all flex flex-col xl:flex-row xl:items-center justify-between gap-4"
                     >
+                      {/* Cancel Appointment X mark (matches modal close button style) */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setAppointmentToCancel({
+                            patientId: p.id,
+                            patientName: p.name,
+                            targetDate: weekDaysWithDates.find(d => d.key === selectedDayKey)?.targetDate,
+                            dateDisplay: weekDaysWithDates.find(d => d.key === selectedDayKey)?.dateDisplay
+                          });
+                        }}
+                        className="w-8 h-8 rounded-full hover:bg-slate-200/70 dark:hover:bg-slate-700/70 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200 cursor-pointer transition-colors absolute top-2.5 rtl:left-2.5 ltr:right-2.5 z-10"
+                        title={t('cancel_appointment')}
+                        aria-label={t('cancel_appointment')}
+                      >
+                        <span className="material-symbols-outlined text-[20px]">close</span>
+                      </button>
+
                       <div className="flex items-center gap-3.5 flex-1 min-w-0">
                         {/* Index Number Badge */}
                         <div className="flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 shrink-0">
@@ -713,7 +754,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                         </div>
                       </div>
 
-                      {/* Actions Toolbar for Specific Selected Day: ONLY "فتح الملف" and "تحديد ميعاد" */}
+                      {/* Actions Toolbar for Specific Selected Day */}
                       <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 self-start xl:self-center shrink-0 w-full xl:w-auto pt-2 xl:pt-0 border-t xl:border-t-0 border-slate-100 dark:border-slate-800">
                         {/* 1. Schedule Visit Button */}
                         {onScheduleVisit && (
@@ -770,8 +811,27 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                     {completedQueuePatients.map((p, idx) => (
                       <div
                         key={p.id}
-                        className="p-4 rounded-2xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/30 dark:bg-emerald-950/20 opacity-90 transition-all flex flex-col xl:flex-row xl:items-center justify-between gap-4"
+                        className="relative p-4 rounded-2xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/30 dark:bg-emerald-950/20 opacity-90 transition-all flex flex-col xl:flex-row xl:items-center justify-between gap-4"
                       >
+                        {/* Cancel Appointment X mark (matches modal close button style) */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAppointmentToCancel({
+                              patientId: p.id,
+                              patientName: p.name,
+                              targetDate: todayDayObj.targetDate,
+                              dateDisplay: todayDayObj.dateDisplay
+                            });
+                          }}
+                          className="w-8 h-8 rounded-full hover:bg-slate-200/70 dark:hover:bg-slate-700/70 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200 cursor-pointer transition-colors absolute top-2.5 rtl:left-2.5 ltr:right-2.5 z-10"
+                          title={t('cancel_appointment')}
+                          aria-label={t('cancel_appointment')}
+                        >
+                          <span className="material-symbols-outlined text-[20px]">close</span>
+                        </button>
+
                         <div className="flex items-center gap-3.5 flex-1 min-w-0">
                           <div className="flex flex-col items-center justify-center bg-emerald-100/70 dark:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-800 rounded-xl px-2.5 py-1.5 shrink-0">
                             <span className="text-[11px] font-mono font-bold text-emerald-800 dark:text-emerald-300">
@@ -1098,14 +1158,14 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
       {/* Delete Confirmation Modal */}
       {visitToDelete && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 text-slate-900 animate-in fade-in zoom-in-95">
-            <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center mb-4 mx-auto border border-red-100">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white animate-in fade-in zoom-in-95">
+            <div className="w-12 h-12 rounded-2xl bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 flex items-center justify-center mb-4 mx-auto border border-red-100 dark:border-red-900/50">
               <span className="material-symbols-outlined text-2xl">delete_forever</span>
             </div>
-            <h3 className="font-headline font-bold text-lg text-slate-900 text-center mb-1">
+            <h3 className="font-headline font-bold text-lg text-slate-900 dark:text-white text-center mb-1">
               {t('delete_visit_title')}
             </h3>
-            <p className="text-xs text-slate-500 text-center mb-4 leading-relaxed">
+            <p className="text-xs text-slate-500 dark:text-slate-400 text-center mb-4 leading-relaxed">
               {isRTL
                 ? `هل أنت متأكد من رغبتك في حذف زيارة المريض ${visitToDelete.patientName} (${visitToDelete.procedure})؟`
                 : `Are you sure you want to permanently delete the visit for ${visitToDelete.patientName} (${visitToDelete.procedure})?`}
@@ -1115,7 +1175,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
               <button
                 type="button"
                 onClick={() => setVisitToDelete(null)}
-                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-semibold text-xs hover:bg-slate-50 transition-colors cursor-pointer"
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 {t('cancel')}
               </button>
@@ -1131,6 +1191,48 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
               >
                 <span className="material-symbols-outlined text-[16px]">delete</span>
                 <span>{t('delete')}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel & Remove Appointment Modal */}
+      {appointmentToCancel && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white animate-in fade-in zoom-in-95">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center mb-4 mx-auto border border-rose-100 dark:border-rose-900/50">
+              <span className="material-symbols-outlined text-2xl">event_busy</span>
+            </div>
+            <h3 className="font-headline font-bold text-lg text-slate-900 dark:text-white text-center mb-1">
+              {t('cancel_appointment_title')}
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 text-center mb-4 leading-relaxed">
+              {isRTL
+                ? `هل أنت متأكد من رغبتك في إلغاء موعد المريض (${appointmentToCancel.patientName}) ${appointmentToCancel.dateDisplay ? 'ليوم ' + appointmentToCancel.dateDisplay : ''} وحذفه نهائياً من جدول اليوم وسجل الزيارات؟`
+                : `Are you sure you want to cancel the appointment for (${appointmentToCancel.patientName}) ${appointmentToCancel.dateDisplay ? 'for ' + appointmentToCancel.dateDisplay : ''} and remove it from today's schedule and visit history?`}
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setAppointmentToCancel(null)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                {t('cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onCancelAppointment && appointmentToCancel) {
+                    onCancelAppointment(appointmentToCancel.patientId, appointmentToCancel.targetDate);
+                  }
+                  setAppointmentToCancel(null);
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-1"
+              >
+                <span className="material-symbols-outlined text-[16px]">close</span>
+                <span>{isRTL ? "إلغاء وحذف الموعد" : "Cancel & Delete"}</span>
               </button>
             </div>
           </div>
