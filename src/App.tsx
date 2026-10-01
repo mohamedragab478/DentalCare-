@@ -17,6 +17,8 @@ import { DoctorSettingsView } from './components/DoctorSettingsView';
 import { NewConsultationModal } from './components/NewConsultationModal';
 import { AddPatientModal } from './components/AddPatientModal';
 import { UploadImageModal } from './components/UploadImageModal';
+import { Sidebar } from './components/Sidebar';
+import { CommandPalette } from './components/CommandPalette';
 import { ScheduleVisitModal } from './components/ScheduleVisitModal';
 import { SelectClinicModal } from './components/SelectClinicModal';
 import { useAppThemeLanguage } from './context/ThemeLanguageContext';
@@ -207,6 +209,27 @@ export function App() {
     };
   }, []);
 
+  // 15-Minute Doctor Auto-Vacate Grace Period Timer
+  const AUTO_VACATE_DELAY_MS = 15 * 60 * 1000;
+  const autoVacateTimerRef = useRef<any>(null);
+
+  useEffect(() => {
+    const timerData = storage.getLogoutTimer();
+    if (timerData) {
+      const elapsed = Date.now() - timerData.logoutTime;
+      if (elapsed >= AUTO_VACATE_DELAY_MS) {
+        handleVacateDoctor();
+        storage.clearLogoutTimer();
+      } else {
+        const remaining = AUTO_VACATE_DELAY_MS - elapsed;
+        autoVacateTimerRef.current = setTimeout(() => {
+          handleVacateDoctor();
+          storage.clearLogoutTimer();
+        }, remaining);
+      }
+    }
+  }, []);
+
   // Active Doctor Clinic State
   const [activeClinic, setActiveClinic] = useState<string>(() => doctorProfile.assignedClinic || 'Clinic 1');
 
@@ -262,6 +285,7 @@ export function App() {
   const [isUploadImageOpen, setIsUploadImageOpen] = useState(false);
   const [isScheduleVisitOpen, setIsScheduleVisitOpen] = useState(false);
   const [isSelectClinicOpen, setIsSelectClinicOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [scheduleTargetPatient, setScheduleTargetPatient] = useState<Patient | null>(null);
   const [schedulePreselectedDate, setSchedulePreselectedDate] = useState<string | null>(null);
 
@@ -270,6 +294,12 @@ export function App() {
 
   // ================= Handlers =================
   const handleDoctorLogin = (doctorId?: string) => {
+    if (autoVacateTimerRef.current) {
+      clearTimeout(autoVacateTimerRef.current);
+      autoVacateTimerRef.current = null;
+    }
+    storage.clearLogoutTimer();
+
     if (doctorId) {
       const cleanTarget = doctorId.toLowerCase().trim();
       const digits = cleanTarget.replace(/\D/g, '');
@@ -335,12 +365,22 @@ export function App() {
       const isNowInClinic = !target.inClinic;
       const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const nowTimestamp = Date.now();
+      const todayDateStr = formatDateISO(new Date());
+
+      const updatedLastVisit =
+        target.lastVisit &&
+        (target.lastVisit.toLowerCase().includes('today') ||
+          target.lastVisit.includes('اليوم') ||
+          target.lastVisit.startsWith(todayDateStr))
+          ? target.lastVisit
+          : todayDateStr;
 
       const updatedPatient: Patient = {
         ...target,
         inClinic: isNowInClinic,
-        inClinicTime: isNowInClinic ? nowTime : undefined,
-        inClinicTimestamp: isNowInClinic ? nowTimestamp : undefined
+        inClinicTime: isNowInClinic ? nowTime : target.inClinicTime,
+        inClinicTimestamp: isNowInClinic ? nowTimestamp : target.inClinicTimestamp,
+        lastVisit: updatedLastVisit
       };
 
       const others = prev.filter((p) => p.id !== patientId);
@@ -360,6 +400,18 @@ export function App() {
   };
 
   const handleLogout = () => {
+    if (userRole === 'doctor' && doctorProfile?.assignedClinic) {
+      const logoutTime = Date.now();
+      storage.setLogoutTimer(doctorProfile.id, doctorProfile.assignedClinic, logoutTime);
+
+      if (autoVacateTimerRef.current) {
+        clearTimeout(autoVacateTimerRef.current);
+      }
+      autoVacateTimerRef.current = setTimeout(() => {
+        handleVacateDoctor();
+        storage.clearLogoutTimer();
+      }, AUTO_VACATE_DELAY_MS);
+    }
     setIsAuthenticated(false);
     setCurrentView('auth-gateway');
   };
@@ -535,10 +587,13 @@ export function App() {
             ...p,
             nextVisit: date,
             nextVisitTime: time,
-            attendingClinic: clinicRoom,  // update clinic so patient appears in correct queue
+            attendingClinic: clinicRoom, // update clinic so patient appears in correct queue
             attendingDoctor: doctorProfile.name,
             treatmentType: procedure || p.treatmentType,
-            visits: [newVisit, ...p.visits]
+            visits: [newVisit, ...p.visits],
+            inClinic: false,
+            inClinicTime: undefined,
+            inClinicTimestamp: undefined
           };
         }
         return p;
@@ -849,12 +904,34 @@ export function App() {
             activeClinic={activeClinic}
             onUpdateActiveClinic={handleUpdateActiveClinic}
             onLogout={handleLogout}
-            onAddPatient={handleOpenNewPatient}
-            onScheduleVisit={() => handleOpenScheduleVisit(activePatient)}
+            onOpenSearch={() => setIsSearchOpen(true)}
           />
 
-          {/* Main Workspace Area (Clean, Full-Width) */}
-          <main className="flex-1 max-w-7xl mx-auto w-full p-4 sm:p-6 lg:p-8">
+          {/* Doctor Sidebar Shell */}
+          {userRole === 'doctor' && (
+            <Sidebar
+              currentView={currentView}
+              onNavigate={(view) => setCurrentView(view)}
+              doctorProfile={doctorProfile}
+              onOpenSearch={() => setIsSearchOpen(true)}
+              onAddPatient={handleOpenNewPatient}
+              onScheduleVisit={() => handleOpenScheduleVisit(activePatient)}
+            />
+          )}
+
+          {/* Command Palette Search Modal */}
+          <CommandPalette
+            isOpen={isSearchOpen}
+            onClose={() => setIsSearchOpen(false)}
+            patients={patients}
+            onSelectPatient={(id) => setSelectedPatientId(id)}
+            onNavigate={(view) => setCurrentView(view)}
+          />
+
+          {/* Main Workspace Area */}
+          <main className={`flex-1 w-full p-4 sm:p-6 lg:p-8 ${
+            userRole === 'doctor' ? 'ltr:md:pl-20 ltr:lg:pl-64 rtl:md:pr-20 rtl:lg:pr-64' : 'max-w-7xl mx-auto pb-20 md:pb-8'
+          }`}>
             {/* ==================================================== */}
             {/* A. DOCTOR PORTAL PAGES                               */}
             {/* ==================================================== */}

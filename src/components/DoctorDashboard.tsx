@@ -91,6 +91,15 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
   // Helper: check if an ISO or locale date string falls on the target date
   const dateStrMatchesTarget = (dateStr: string, targetDate: Date): boolean => {
     if (!dateStr) return false;
+    const clean = dateStr.trim().toLowerCase();
+    if (clean.includes('today') || dateStr.includes('اليوم')) {
+      const today = new Date();
+      return (
+        targetDate.getDate() === today.getDate() &&
+        targetDate.getMonth() === today.getMonth() &&
+        targetDate.getFullYear() === today.getFullYear()
+      );
+    }
     const parsed = parseAppointmentDate(dateStr) || new Date(dateStr);
     if (parsed && !isNaN(parsed.getTime())) {
       return (
@@ -321,17 +330,38 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
         return false;
       }
 
-      // If patient is inClinic in this active clinic, show them
-      if (p.inClinic) {
-        return true;
+      // Check if patient matches today's date
+      const matchesDate = isPatientMatchingDate(p, todayDayObj);
+      if (!matchesDate) {
+        // If not matching today's date, only show if checked into clinic TODAY
+        if (p.inClinic && p.inClinicTimestamp) {
+          const checkinDate = new Date(p.inClinicTimestamp);
+          const today = todayDayObj.targetDate;
+          const isCheckinToday =
+            checkinDate.getDate() === today.getDate() &&
+            checkinDate.getMonth() === today.getMonth() &&
+            checkinDate.getFullYear() === today.getFullYear();
+          if (isCheckinToday) return true;
+        }
+        return false;
       }
 
-      // Otherwise check if patient matches today's date
-      return isPatientMatchingDate(p, todayDayObj);
+      return true;
     });
 
+    const isSameDateAsToday = (timestamp?: number) => {
+      if (!timestamp) return true;
+      const d = new Date(timestamp);
+      const today = todayDayObj.targetDate;
+      return (
+        d.getDate() === today.getDate() &&
+        d.getMonth() === today.getMonth() &&
+        d.getFullYear() === today.getFullYear()
+      );
+    };
+
     const inClinicList = filtered
-      .filter((p) => p.inClinic)
+      .filter((p) => Boolean(p.inClinic) && isSameDateAsToday(p.inClinicTimestamp))
       .sort((a, b) => {
         const timeA = a.inClinicTimestamp || 0;
         const timeB = b.inClinicTimestamp || 0;
@@ -339,7 +369,9 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
         return (a.inClinicOrder || 0) - (b.inClinicOrder || 0);
       });
 
-    const notInClinicList = filtered.filter((p) => !p.inClinic);
+    const notInClinicList = filtered.filter(
+      (p) => !p.inClinic || !isSameDateAsToday(p.inClinicTimestamp)
+    );
 
     return [...inClinicList, ...notInClinicList];
   }, [patients, effectiveClinic, todayDayObj]);
@@ -372,15 +404,15 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
   }, [patients, effectiveClinic, weekDaysWithDates]);
 
   return (
-    <div className="max-w-7xl mx-auto w-full space-y-8 animate-in fade-in duration-200 transition-colors">
+    <div className="w-full space-y-6 animate-fade-slide transition-colors">
       {/* Header */}
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-2 border-b border-slate-200/80 dark:border-slate-800">
         <div>
-          <h1 className="font-headline font-bold text-2xl sm:text-3xl text-slate-900 dark:text-white flex items-center gap-2">
-            <span>{t('welcome_back')}, {currentDoctorName}</span>
+          <h1 className="font-headline font-bold text-2xl sm:text-3xl text-slate-900 dark:text-slate-100">
+            {t('welcome_back')}, {currentDoctorName}
           </h1>
           <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mt-1">
-            {t('clinical_overview')} • {currentSpecialty} • <strong className="text-[#006194] dark:text-[#00a3e0]">{effectiveClinic.replace(/Clinic\s*(\d+)/i, 'العيادة $1')}</strong>
+            {t('clinical_overview')} • {currentSpecialty} • <strong className="text-[#0F4C5C] dark:text-[#9FE3D4]">{effectiveClinic.replace(/Clinic\s*(\d+)/i, 'العيادة $1')}</strong>
           </p>
         </div>
 
@@ -388,7 +420,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
           {onScheduleVisit && (
             <button
               onClick={() => onScheduleVisit()}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs transition-colors flex items-center gap-2 cursor-pointer"
+              className="bg-[#0F4C5C] hover:bg-[#0B3945] text-white px-4 py-2.5 rounded-lg font-medium text-xs transition-colors flex items-center gap-2 cursor-pointer shadow-xs"
               id="dashboard-schedule-visit-btn"
             >
               <span className="material-symbols-outlined text-[18px]">calendar_add_on</span>
@@ -401,9 +433,9 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
               onClick={isSelectedDayToday ? onAddPatient : undefined}
               disabled={!isSelectedDayToday}
               title={isSelectedDayToday ? '' : (isRTL ? 'لا يمكن إضافة مريض إلا في اليوم الحالي' : 'Can only add patients for today')}
-              className={`px-4 py-2.5 rounded-xl font-bold text-xs transition-colors flex items-center gap-2 ${
+              className={`px-4 py-2.5 rounded-lg font-medium text-xs transition-colors flex items-center gap-2 ${
                 isSelectedDayToday
-                  ? 'bg-[#006194] hover:bg-[#004b73] text-white cursor-pointer'
+                  ? 'bg-[#E29578] hover:bg-[#D88465] text-white cursor-pointer shadow-xs'
                   : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-60'
               }`}
               id="dashboard-register-patient-btn"
@@ -415,16 +447,16 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
         </div>
       </header>
 
-      {/* Main Grid: Patient Queue (8 cols) + Clinic Operatories (4 cols) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Patient Queue & Management (8 cols) */}
-        <div className="lg:col-span-8 bg-white dark:bg-slate-900 rounded-3xl border border-[#e2e8f0] dark:border-slate-800 p-6 shadow-xs">
+      {/* Main Grid: Patient Queue (Span 2) + Clinic Operatories (Span 1) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Patient Queue & Management (2 cols) */}
+        <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5">
           <div className="border-b border-slate-100 dark:border-slate-800 pb-4 mb-4 space-y-3">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
               <div>
                 <div className="flex items-center gap-2.5 flex-wrap">
-                  <h2 className="font-headline font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[#006194] dark:text-[#00a3e0]">format_list_numbered</span>
+                  <h2 className="font-headline font-bold text-base text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[#0F4C5C] dark:text-[#9FE3D4]">format_list_numbered</span>
                     <span>{t('appointment_queue')}</span>
                   </h2>
                   {displayedQueuePatients.filter(p => p.inClinic).length > 0 && (
@@ -452,24 +484,24 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                       key={day.key}
                       type="button"
                       onClick={() => setSelectedDayKey(day.key)}
-                      className={`px-1 py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex flex-col items-center justify-center gap-0.5 border cursor-pointer w-full ${isSelected
-                        ? 'bg-[#006194] text-white border-[#006194] shadow-xs'
+                      className={`px-1 py-2 rounded-lg text-xs font-medium transition-all flex flex-col items-center justify-center gap-0.5 border cursor-pointer w-full ${isSelected
+                        ? 'bg-[#0F4C5C] text-white border-[#0F4C5C]'
                         : day.isToday
-                          ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100'
-                          : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-[#006194]'
+                          ? 'bg-[#E8F4F1] dark:bg-[#0F2930] text-[#0F4C5C] dark:text-[#9FE3D4] border-[#C3E4DD] dark:border-[#1D4F5C]'
+                          : 'bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-[#0F4C5C]'
                       }`}
                     >
                       <div className="flex items-center gap-1">
                         <span>{isRTL ? day.arName : day.enName}</span>
                         {day.isToday && (
-                          <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-emerald-500 animate-ping'}`} />
+                          <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-[#E29578]'}`} />
                         )}
                       </div>
-                      <span className={`text-[9px] sm:text-[10px] font-mono opacity-75`}>
+                      <span className="text-[10px] font-mono opacity-75">
                         {day.dateDisplay}
                       </span>
                       {count > 0 && (
-                        <span className={`text-[9px] sm:text-[10px] font-mono font-bold px-1.5 rounded-full ${isSelected ? 'bg-white/20 text-white' : 'bg-blue-100 dark:bg-blue-900 text-[#006194] dark:text-blue-200'}`}>
+                        <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded ${isSelected ? 'bg-white/20 text-white' : 'bg-[#E8F4F1] text-[#0F4C5C]'}`}>
                           {count}
                         </span>
                       )}
@@ -482,7 +514,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
 
           {/* Active Clinic Queue Header Badge */}
           <div className="flex items-center gap-2 mb-4">
-            <span className="px-3.5 py-1.5 rounded-xl bg-[#006194] text-white text-xs font-bold shadow-2xs flex items-center gap-2">
+            <span className="px-3.5 py-1.5 rounded-lg bg-[#0F4C5C] text-white text-xs font-medium flex items-center gap-2">
               <span className="material-symbols-outlined text-[16px]">medical_services</span>
               <span>{isRTL ? `طابور ${effectiveClinic.replace(/Clinic\s*(\d+)/i, 'العيادة $1')}` : `${effectiveClinic} Queue`}</span>
             </span>
@@ -490,15 +522,15 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
 
           <div className="space-y-3">
             {selectedDayKey !== 'all' && (
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-blue-50/70 dark:bg-blue-950/40 p-3 rounded-2xl border border-blue-100 dark:border-blue-900/50 mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[#006194] dark:text-blue-400 text-lg">calendar_month</span>
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-[#E8F4F1]/50 dark:bg-[#0F2930]/40 p-3 rounded-xl border border-[#D4EBE5] dark:border-[#1A4753] mb-3">
+                <div className="flex items-center gap-2 text-xs font-semibold text-[#0F4C5C] dark:text-[#9FE3D4]">
+                  <span className="material-symbols-outlined text-lg">calendar_month</span>
+                  <span>
                     {isRTL
                       ? `مواعيد يوم ${weekDaysWithDates.find(d => d.key === selectedDayKey)?.arName} (${weekDaysWithDates.find(d => d.key === selectedDayKey)?.dateDisplay})`
                       : `Appointments for ${weekDaysWithDates.find(d => d.key === selectedDayKey)?.enName} (${weekDaysWithDates.find(d => d.key === selectedDayKey)?.dateDisplay})`}
                   </span>
-                  <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-[#006194] text-white">
+                  <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-[#0F4C5C] text-white">
                     {selectedDayPatients.length}
                   </span>
                 </div>
@@ -506,10 +538,10 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                   <button
                     type="button"
                     onClick={() => onScheduleVisit(undefined, weekDaysWithDates.find(d => d.key === selectedDayKey)?.targetDate)}
-                    className="inline-flex items-center gap-1.5 bg-[#006194] hover:bg-[#004b73] text-white px-3.5 py-1.5 rounded-xl font-bold text-xs cursor-pointer shadow-2xs transition-all active:scale-95 shrink-0"
+                    className="inline-flex items-center gap-1.5 bg-[#0F4C5C] hover:bg-[#0B3945] text-white px-3.5 py-1.5 rounded-lg font-medium text-xs cursor-pointer transition-all shrink-0"
                   >
                     <span className="material-symbols-outlined text-[16px]">calendar_add_on</span>
-                    <span>{isRTL ? "إضافة موعد جديد لهذا اليوم" : "Schedule New Appointment"}</span>
+                    <span>{isRTL ? "إضافة موعد جديد" : "Schedule New Appointment"}</span>
                   </button>
                 )}
               </div>
@@ -834,14 +866,14 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
           </div>
         </div>
 
-        {/* Clinic Status Quick View (4 cols) */}
-        <div className="lg:col-span-4 bg-white dark:bg-slate-900 rounded-3xl border border-[#e2e8f0] dark:border-slate-800 p-6 shadow-xs flex flex-col justify-between">
+        {/* Clinic Status Quick View (1 col) */}
+        <div className="lg:col-span-1 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 flex flex-col justify-between">
           <div>
-            <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-4 mb-4">
-              <h2 className="font-headline font-bold text-lg text-slate-900 dark:text-white">{t('clinic_status')}</h2>
+            <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3 mb-4">
+              <h2 className="font-headline font-bold text-base text-slate-900 dark:text-slate-100">{t('clinic_status')}</h2>
               <button
                 onClick={() => onNavigate('doctor-clinics')}
-                className="text-xs text-[#006194] dark:text-[#00a3e0] font-semibold hover:underline cursor-pointer"
+                className="text-xs text-[#0F4C5C] dark:text-[#9FE3D4] font-semibold hover:underline cursor-pointer"
               >
                 {t('manage')}
               </button>
@@ -869,16 +901,17 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                 return (
                   <div
                     key={room.id}
-                    className={`p-3 rounded-2xl border transition-all flex items-center justify-between gap-2 ${isCurrentDoctorRoom
-                      ? 'border-[#006194] dark:border-[#00a3e0] bg-blue-50/70 dark:bg-blue-950/40 ring-1 ring-[#006194]/20'
-                      : isOccupiedByOther
-                        ? 'border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 opacity-90'
-                        : 'border-slate-200 dark:border-slate-800 bg-[#f8fafc] dark:bg-slate-800/60'
-                      }`}
+                    className={`p-3 rounded-lg border transition-colors flex items-center justify-between gap-2 ${
+                      isCurrentDoctorRoom
+                        ? 'border-[#C3E4DD] dark:border-[#1D4F5C] bg-[#E8F4F1]/60 dark:bg-[#0F2930]/40'
+                        : isOccupiedByOther
+                        ? 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40'
+                        : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900'
+                    }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       {room.doctorAvatar ? (
-                        <img src={room.doctorAvatar} alt={room.name} className="w-8 h-8 rounded-full object-cover border dark:border-slate-700 shrink-0" />
+                        <img src={room.doctorAvatar} alt={room.name} className="w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-slate-700 shrink-0" />
                       ) : (
                         <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-400 shrink-0">
                           <span className="material-symbols-outlined text-[16px]">
@@ -888,14 +921,14 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                       )}
                       <div className="truncate">
                         <div className="flex items-center gap-1.5">
-                          <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{room.name}</p>
+                          <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate">{room.name}</p>
                           {isCurrentDoctorRoom && (
-                            <span className="text-[10px] bg-[#006194] text-white px-1.5 py-0.5 rounded-md font-bold shrink-0">
-                              {isRTL ? 'عيادتك الحالية' : 'Active'}
+                            <span className="text-[10px] bg-[#0F4C5C] text-white px-1.5 py-0.2 rounded font-medium shrink-0">
+                              {isRTL ? 'عيادتك' : 'Active'}
                             </span>
                           )}
                           {isOccupiedByOther && (
-                            <span className="text-[10px] bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-1.5 py-0.5 rounded-md font-semibold shrink-0">
+                            <span className="text-[10px] bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-1.5 py-0.2 rounded font-medium shrink-0">
                               {isRTL ? 'مشغولة' : 'Occupied'}
                             </span>
                           )}

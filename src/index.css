@@ -5,17 +5,29 @@
 @theme {
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-headline: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+  --font-serif-display: 'Fraunces', 'Plus Jakarta Sans', Georgia, serif;
+  --font-arabic: 'Readex Pro', 'Cairo', system-ui, sans-serif;
+
+  /* Brand Palette - Anti-AI Slop Clinical Identity */
+  --color-brand-teal: #0F4C5C;
+  --color-brand-teal-hover: #0B3945;
+  --color-brand-mint: #E8F4F1;
+  --color-brand-ivory: #FAF7F2;
+  --color-brand-sand: #E29578;
   
-  --color-primary: #006194;
-  --color-primary-hover: #004b73;
-  --color-primary-container: #007bb9;
+  --color-primary: #0F4C5C;
+  --color-primary-hover: #0B3945;
+  --color-primary-container: #E8F4F1;
   --color-primary-fixed: #cce5ff;
   --color-primary-fixed-dim: #93ccff;
+
+  --color-accent: #E29578;
+  --color-accent-hover: #D88465;
   
   --color-surface-white: #ffffff;
-  --color-clinical-ice: #f8fafc;
-  --color-surface-bg: #f8fafc;
-  --color-border-subtle: #e2e8f0;
+  --color-clinical-ice: #FAF7F2;
+  --color-surface-bg: #F8FAFC;
+  --color-border-subtle: #E2E8F0;
   
   --color-status-extraction: #ef4444;
   --color-status-extraction-bg: #fee2e2;
@@ -42,31 +54,85 @@
   --color-status-none-text: #475569;
 }
 
+@keyframes animateInFadeSlide {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-slide {
+  animation: animateInFadeSlide 180ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-slide {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
 html {
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 body {
   font-family: var(--font-sans);
-  background-color: #f8fafc;
-  color: #181c20;
+  background-color: #FAF7F2;
+  color: #0F172A;
 }
 
 html.dark body,
 body.dark {
-  background-color: #020617;
-  color: #f8fafc;
+  background-color: #090D16;
+  color: #F8FAFC;
+}
+
+/* Arabic typography overrides */
+[dir="rtl"] body {
+  font-family: var(--font-arabic);
 }
 
 h1, h2, h3, h4, h5, h6, .font-headline {
   font-family: var(--font-headline);
 }
 
+[dir="rtl"] h1, [dir="rtl"] h2, [dir="rtl"] h3, [dir="rtl"] h4, [dir="rtl"] h5, [dir="rtl"] h6, [dir="rtl"] .font-headline {
+  font-family: var(--font-arabic);
+}
+
+/* Anti-AI Slop Depth Enforcement: Static cards get borders & neutral fills, no shadows */
+.card-flat {
+  background-color: #ffffff;
+  border: 1px solid #E2E8F0;
+  border-radius: 0.75rem;
+  box-shadow: none !important;
+}
+
+.dark .card-flat {
+  background-color: #111827;
+  border-color: #1F2937;
+  box-shadow: none !important;
+}
+
+.surface-tint {
+  background-color: #E8F4F1;
+}
+
+.dark .surface-tint {
+  background-color: #0F2930;
+}
+
 .material-symbols-outlined {
   font-family: 'Material Symbols Outlined';
   font-weight: normal;
   font-style: normal;
-  font-size: 24px;
+  font-size: 22px;
   line-height: 1;
   letter-spacing: normal;
   text-transform: none;
@@ -84,7 +150,7 @@ h1, h2, h3, h4, h5, h6, .font-headline {
   font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 }
 
-/* Custom scrollbar for clinical dashboards */
+/* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -105,3 +171,4 @@ h1, h2, h3, h4, h5, h6, .font-headline {
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+

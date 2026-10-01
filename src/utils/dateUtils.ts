@@ -48,6 +48,16 @@ export function parseAppointmentDate(dateStr?: string): Date | null {
   const trimmed = dateStr.trim();
   if (!trimmed) return null;
 
+  const lower = trimmed.toLowerCase();
+  if (lower.includes('today') || trimmed.includes('اليوم')) {
+    return new Date();
+  }
+  if (lower.includes('tomorrow') || trimmed.includes('غدا') || trimmed.includes('غداً')) {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow;
+  }
+
   // Try standard Date parsing
   const standardParsed = new Date(trimmed);
   if (!isNaN(standardParsed.getTime())) {

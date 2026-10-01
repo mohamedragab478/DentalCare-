@@ -6,6 +6,8 @@ const PATIENTS_KEY = 'dentalcare_patients_v5';
 const CLINICS_KEY = 'dentalcare_clinics_v5';
 const QUEUE_KEY = 'dentalcare_completed_queue_v5';
 
+const LOGOUT_TIMER_KEY = 'dentalcare_doctor_logout_timer_v1';
+
 const DEFAULT_DOCTOR: DoctorProfile = {
   id: 'doc-01',
   name: 'Dr. Ahmed Al-Sayed',
@@ -117,6 +119,30 @@ export const storage = {
     } catch (e) {
       console.warn('Failed to sync all', e);
     }
+  },
+
+  getLogoutTimer: (): { doctorId: string; logoutTime: number; clinicName: string } | null => {
+    try {
+      const data = localStorage.getItem(LOGOUT_TIMER_KEY);
+      if (data) return JSON.parse(data);
+    } catch (e) {
+      console.warn('Failed to read logout timer', e);
+    }
+    return null;
+  },
+
+  setLogoutTimer: (doctorId: string, clinicName: string, logoutTime: number) => {
+    try {
+      localStorage.setItem(LOGOUT_TIMER_KEY, JSON.stringify({ doctorId, clinicName, logoutTime }));
+    } catch (e) {
+      console.warn('Failed to save logout timer', e);
+    }
+  },
+
+  clearLogoutTimer: () => {
+    try {
+      localStorage.removeItem(LOGOUT_TIMER_KEY);
+    } catch (e) {}
   }
 };
 
