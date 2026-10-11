@@ -61,7 +61,7 @@ export const VisitsView: React.FC<VisitsViewProps> = ({
 
         <button
           onClick={onNewConsultation}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-xs cursor-pointer active:scale-95"
+          className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer active:scale-95 w-full sm:w-auto min-h-[42px]"
         >
           <span className="material-symbols-outlined text-[18px]">calendar_add_on</span>
           <span>{t('schedule_next_visit')}</span>
@@ -69,7 +69,7 @@ export const VisitsView: React.FC<VisitsViewProps> = ({
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-[#e2e8f0] dark:border-slate-800 p-4 shadow-2xs flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-[#e2e8f0] dark:border-slate-800 p-4 shadow-2xs flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
         <div className="relative flex-1">
           <span className={`material-symbols-outlined absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 text-slate-400 text-[20px]`}>
             search
@@ -93,7 +93,7 @@ export const VisitsView: React.FC<VisitsViewProps> = ({
             <button
               key={tab.key}
               onClick={() => setFilterStatus(tab.key)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer text-center min-h-[36px] ${
                 filterStatus === tab.key
                   ? 'bg-[#006194] dark:bg-[#00a3e0] text-white shadow-xs'
                   : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
@@ -186,12 +186,13 @@ export const VisitsView: React.FC<VisitsViewProps> = ({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
+                <div className="flex items-center gap-2 shrink-0 w-full md:w-auto justify-end pt-2 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-slate-800">
                   <button
                     onClick={() => onSelectPatient(visit.patient)}
-                    className="px-3.5 py-1.5 border border-[#006194] dark:border-blue-500 text-[#006194] dark:text-[#00a3e0] hover:bg-blue-50 dark:hover:bg-slate-800 rounded-xl text-xs font-semibold cursor-pointer transition-colors"
+                    className="flex-1 md:flex-none px-3.5 py-2 border border-[#006194] dark:border-blue-500 text-[#006194] dark:text-[#00a3e0] hover:bg-blue-50 dark:hover:bg-slate-800 rounded-xl text-xs font-semibold cursor-pointer transition-colors text-center min-h-[38px] flex items-center justify-center gap-1"
                   >
-                    {t('open_chart')}
+                    <span className="material-symbols-outlined text-[16px]">folder_shared</span>
+                    <span>{t('open_chart')}</span>
                   </button>
 
                   {onDeleteVisit && (
@@ -205,7 +206,7 @@ export const VisitsView: React.FC<VisitsViewProps> = ({
                         })
                       }
                       title={isRTL ? "مسح الزيارة" : "Delete visit"}
-                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-xl border border-transparent hover:border-red-200 dark:hover:border-red-800 transition-colors cursor-pointer"
+                      className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-xl border border-transparent hover:border-red-200 dark:hover:border-red-800 transition-colors cursor-pointer min-h-[38px] min-w-[38px] flex items-center justify-center"
                     >
                       <span className="material-symbols-outlined text-[18px]">delete</span>
                     </button>

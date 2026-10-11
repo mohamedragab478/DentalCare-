@@ -79,7 +79,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                     </p>
                   </div>
                 </div>
-                <span className="text-xs font-medium text-[#0F4C5C] dark:text-[#9FE3D4] bg-[#E8F4F1] dark:bg-[#0F2930] px-2 py-1 rounded">
+                <span className="text-xs font-bold text-[#006194] dark:text-[#00a3e0] bg-blue-50 dark:bg-blue-950 px-2 py-1 rounded-md border border-blue-100 dark:border-blue-900">
                   {isRTL ? 'فتح السجل' : 'Open Record'}
                 </span>
               </button>

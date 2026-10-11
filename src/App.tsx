@@ -1035,8 +1035,8 @@ export function App() {
           />
 
           {/* Main Workspace Area */}
-          <main className={`flex-1 w-full p-4 sm:p-6 lg:p-8 ${
-            userRole === 'doctor' ? 'ltr:md:pl-20 ltr:lg:pl-64 rtl:md:pr-20 rtl:lg:pr-64' : 'max-w-7xl mx-auto pb-20 md:pb-8'
+          <main className={`flex-1 w-full p-3 sm:p-6 lg:p-8 pb-24 md:pb-8 pb-safe ${
+            userRole === 'doctor' ? 'ltr:md:pl-20 ltr:lg:pl-64 rtl:md:pr-20 rtl:lg:pr-64' : 'max-w-7xl mx-auto'
           }`}>
             {/* ==================================================== */}
             {/* A. DOCTOR PORTAL PAGES                               */}

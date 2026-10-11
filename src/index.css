@@ -172,6 +172,38 @@ h1, h2, h3, h4, h5, h6, .font-headline {
   background: #94a3b8;
 }
 
+/* Hide scrollbar for mobile swipeable containers */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Mobile ergonomics & touch responsiveness */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Prevent auto-zoom on input focus in iOS Safari by ensuring at least 16px */
+@media (max-width: 640px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Safe area padding for mobile navigation bars and headers */
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 12px);
+}
+.pt-safe {
+  padding-top: max(env(safe-area-inset-top, 0px), 12px);
+}
+.touch-momentum {
+  -webkit-overflow-scrolling: touch;
+}
+
 /* Print Specific Rules for Medical Prescriptions */
 @media print {
   @page {

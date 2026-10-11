@@ -166,9 +166,9 @@ export const ScheduleVisitModal: React.FC<ScheduleVisitModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4">
       {/* Modal Box: ALWAYS WHITE as requested */}
-      <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 text-slate-900 animate-in fade-in zoom-in-95 max-h-[92vh] overflow-y-auto">
+      <div className="bg-white rounded-2xl sm:rounded-3xl max-w-xl w-full p-4 sm:p-8 shadow-2xl border border-slate-200 text-slate-900 animate-in fade-in zoom-in-95 max-h-[92vh] overflow-y-auto">
         {/* Header */}
         <div className="flex justify-between items-center border-b border-slate-100 pb-4 mb-6">
           <div className="flex items-center gap-3">
@@ -410,17 +410,17 @@ export const ScheduleVisitModal: React.FC<ScheduleVisitModalProps> = ({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 sm:gap-3 pt-4 border-t border-slate-100">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 cursor-pointer"
+              className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 cursor-pointer min-h-[42px] flex items-center justify-center"
             >
               {t('cancel')}
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-xl bg-[#006194] hover:bg-[#004b73] text-white text-xs font-bold shadow-md cursor-pointer flex items-center gap-1.5 transition-transform active:scale-95"
+              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-[#006194] hover:bg-[#004b73] text-white text-xs font-bold shadow-md cursor-pointer flex items-center justify-center gap-1.5 transition-transform active:scale-95 min-h-[42px]"
             >
               <span className="material-symbols-outlined text-[18px]">check_circle</span>
               <span>{isRTL ? "حفظ الموعد وتثبيته" : "Save Appointment"}</span>

@@ -392,15 +392,15 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2.5 w-full sm:w-auto">
           {onScheduleVisit && (
             <button
               onClick={() => onScheduleVisit()}
-              className="bg-[#0F4C5C] hover:bg-[#0B3945] text-white px-4 py-2.5 rounded-lg font-medium text-xs transition-colors flex items-center gap-2 cursor-pointer shadow-xs"
+              className="flex-1 sm:flex-none bg-[#0F4C5C] hover:bg-[#0B3945] text-white px-3.5 sm:px-4 py-2.5 rounded-lg font-medium text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs"
               id="dashboard-schedule-visit-btn"
             >
               <span className="material-symbols-outlined text-[18px]">calendar_add_on</span>
-              <span>{t('schedule_next_visit')}</span>
+              <span className="truncate">{t('schedule_next_visit')}</span>
             </button>
           )}
 
@@ -409,7 +409,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
               onClick={isSelectedDayToday ? onAddPatient : undefined}
               disabled={!isSelectedDayToday}
               title={isSelectedDayToday ? '' : (isRTL ? 'لا يمكن إضافة مريض إلا في اليوم الحالي' : 'Can only add patients for today')}
-              className={`px-4 py-2.5 rounded-lg font-medium text-xs transition-colors flex items-center gap-2 ${
+              className={`flex-1 sm:flex-none px-3.5 sm:px-4 py-2.5 rounded-lg font-medium text-xs transition-colors flex items-center justify-center gap-2 ${
                 isSelectedDayToday
                   ? 'bg-[#E29578] hover:bg-[#D88465] text-white cursor-pointer shadow-xs'
                   : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-60'
@@ -417,7 +417,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
               id="dashboard-register-patient-btn"
             >
               <span className="material-symbols-outlined text-[18px]">person_add</span>
-              <span>{t('new_patient')}</span>
+              <span className="truncate">{t('new_patient')}</span>
             </button>
           )}
         </div>
@@ -448,9 +448,9 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
               </div>
             </div>
 
-            {/* 7 Days Weekday Filter Buttons (السبت -> الجمعة) Spanning Full Width */}
+            {/* 7 Days Weekday Filter Buttons (السبت -> الجمعة) Smooth Touch Scroller on Mobile */}
             <div className="pt-2">
-              <div className="grid grid-cols-7 gap-1.5 sm:gap-2 w-full">
+              <div className="flex sm:grid sm:grid-cols-7 gap-1.5 sm:gap-2 w-full overflow-x-auto no-scrollbar pb-1.5 pt-0.5 -mx-1 px-1 touch-pan-x">
                 {weekDaysWithDates.map((day) => {
                   const count = dayCounts[day.key] || 0;
                   const isSelected = selectedDayKey === day.key;
@@ -460,7 +460,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                       key={day.key}
                       type="button"
                       onClick={() => setSelectedDayKey(day.key)}
-                      className={`px-1 py-2 rounded-lg text-xs font-medium transition-all flex flex-col items-center justify-center gap-0.5 border cursor-pointer w-full ${isSelected
+                      className={`px-2.5 sm:px-1 py-2 rounded-lg text-xs font-medium transition-all flex flex-col items-center justify-center gap-0.5 border cursor-pointer min-w-[62px] sm:min-w-0 flex-1 shrink-0 ${isSelected
                         ? 'bg-[#0F4C5C] text-white border-[#0F4C5C]'
                         : day.isToday
                           ? 'bg-[#E8F4F1] dark:bg-[#0F2930] text-[#0F4C5C] dark:text-[#9FE3D4] border-[#C3E4DD] dark:border-[#1D4F5C]'
@@ -549,16 +549,16 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                         <button
                           type="button"
                           onClick={(e) => handleRemovePatientFromQueue(p.id, todayDayObj.targetDate, todayDayObj, e)}
-                          className="absolute top-2 start-2 w-5 h-5 rounded-md flex items-center justify-center text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/60 transition-colors cursor-pointer z-10"
+                          className="absolute top-2 start-2 w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/60 transition-colors cursor-pointer z-10"
                           title={isRTL ? 'إزالة من طابور اليوم' : "Remove from today's queue"}
                           aria-label={isRTL ? 'إزالة من طابور اليوم' : "Remove from today's queue"}
                         >
-                          <span className="material-symbols-outlined text-[15px] leading-none">close</span>
+                          <span className="material-symbols-outlined text-[16px] leading-none">close</span>
                         </button>
 
                         <div className="flex items-center gap-3.5 flex-1 min-w-0">
                           {/* Index Number Badge */}
-                          <div className="flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 shrink-0 ms-2 sm:ms-2">
+                          <div className="flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 shrink-0 ms-4 sm:ms-2">
                             <span className="text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300">
                               #{idx + 1}
                             </span>
@@ -615,13 +615,13 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                           </div>
                         </div>
 
-                        {/* Actions Toolbar */}
-                        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 self-start xl:self-center shrink-0 w-full xl:w-auto pt-2 xl:pt-0 border-t xl:border-t-0 border-slate-100 dark:border-slate-800">
+                        {/* Actions Toolbar: Responsive 2x2 Grid on Mobile (< sm), Flex on Desktop */}
+                        <div className="grid grid-cols-2 sm:flex sm:flex-wrap xl:flex-nowrap items-center gap-2 self-start xl:self-center shrink-0 w-full xl:w-auto pt-2.5 xl:pt-0 border-t xl:border-t-0 border-slate-100 dark:border-slate-800">
                           {/* 1. In Clinic Toggle Button */}
                           <button
                             type="button"
                             onClick={(e) => handleInClinicToggle(p.id, e)}
-                            className={`flex-1 sm:flex-none px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs active:scale-95 shrink-0 ${p.inClinic
+                            className={`min-h-[40px] px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs active:scale-95 shrink-0 ${p.inClinic
                               ? 'bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-600'
                               : 'bg-white dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-slate-700 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-300 border border-slate-200 dark:border-slate-700'
                               }`}
@@ -638,7 +638,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                             <button
                               type="button"
                               onClick={() => onScheduleVisit(p)}
-                              className="flex-1 sm:flex-none px-3 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-[#006194] dark:text-[#00a3e0] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 border border-blue-100 dark:border-slate-700 active:scale-95 shrink-0"
+                              className="min-h-[40px] px-3 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-[#006194] dark:text-[#00a3e0] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 border border-blue-100 dark:border-slate-700 active:scale-95 shrink-0"
                               title={t('schedule_visit')}
                             >
                               <span className="material-symbols-outlined text-[15px]">calendar_month</span>
@@ -650,7 +650,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                           <button
                             type="button"
                             onClick={() => onSelectPatient(p)}
-                            className="flex-1 sm:flex-none px-3.5 py-2 bg-[#006194] hover:bg-[#004b73] text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95 flex items-center justify-center gap-1.5 shrink-0"
+                            className="min-h-[40px] px-3.5 py-2 bg-[#006194] hover:bg-[#004b73] text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95 flex items-center justify-center gap-1.5 shrink-0"
                             title={t('open_patient_chart')}
                           >
                             <span className="material-symbols-outlined text-[15px]">folder_shared</span>
@@ -661,7 +661,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                           <button
                             type="button"
                             onClick={(e) => handleToggleFinished(p.id, e)}
-                            className="flex-1 sm:flex-none px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs active:scale-95 shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white"
+                            className="min-h-[40px] px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs active:scale-95 shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white"
                             title={t('mark_patient_done')}
                           >
                             <span className="material-symbols-outlined text-[16px]">check_circle</span>
@@ -747,13 +747,13 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                       </div>
 
                       {/* Actions Toolbar for Specific Selected Day: ONLY "فتح الملف" and "تحديد ميعاد" */}
-                      <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 self-start xl:self-center shrink-0 w-full xl:w-auto pt-2 xl:pt-0 border-t xl:border-t-0 border-slate-100 dark:border-slate-800">
+                      <div className="grid grid-cols-2 sm:flex sm:flex-nowrap items-center gap-2 self-start xl:self-center shrink-0 w-full xl:w-auto pt-2.5 xl:pt-0 border-t xl:border-t-0 border-slate-100 dark:border-slate-800">
                         {/* 1. Schedule Visit Button */}
                         {onScheduleVisit && (
                           <button
                             type="button"
                             onClick={() => onScheduleVisit(p, weekDaysWithDates.find(d => d.key === selectedDayKey)?.targetDate)}
-                            className="flex-1 sm:flex-none px-3.5 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-[#006194] dark:text-[#00a3e0] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 border border-blue-100 dark:border-slate-700 active:scale-95 shrink-0"
+                            className="min-h-[40px] px-3.5 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-[#006194] dark:text-[#00a3e0] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 border border-blue-100 dark:border-slate-700 active:scale-95 shrink-0"
                             title={isRTL ? "تحديد موعد جديد" : "Schedule Visit"}
                           >
                             <span className="material-symbols-outlined text-[15px]">calendar_month</span>
@@ -765,7 +765,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                         <button
                           type="button"
                           onClick={() => onSelectPatient(p)}
-                          className="flex-1 sm:flex-none px-4 py-2 bg-[#006194] hover:bg-[#004b73] text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95 flex items-center justify-center gap-1.5 shrink-0"
+                          className="min-h-[40px] px-4 py-2 bg-[#006194] hover:bg-[#004b73] text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95 flex items-center justify-center gap-1.5 shrink-0"
                           title={t('open_patient_chart')}
                         >
                           <span className="material-symbols-outlined text-[15px]">folder_shared</span>
@@ -850,11 +850,11 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2 self-start xl:self-center shrink-0">
+                        <div className="grid grid-cols-2 sm:flex items-center gap-2 self-start xl:self-center shrink-0 w-full sm:w-auto pt-2.5 sm:pt-0 border-t sm:border-t-0 border-emerald-100 dark:border-emerald-900/60">
                           <button
                             type="button"
                             onClick={() => onSelectPatient(p)}
-                            className="px-3.5 py-2 bg-[#006194] hover:bg-[#004b73] text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95 flex items-center gap-1.5"
+                            className="min-h-[40px] px-3.5 py-2 bg-[#006194] hover:bg-[#004b73] text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95 flex items-center justify-center gap-1.5"
                           >
                             <span className="material-symbols-outlined text-[15px]">folder_shared</span>
                             <span>{t('open_chart')}</span>
@@ -863,7 +863,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                           <button
                             type="button"
                             onClick={(e) => handleToggleFinished(p.id, e)}
-                            className="px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 active:scale-95"
+                            className="min-h-[40px] px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 active:scale-95"
                           >
                             <span className="material-symbols-outlined text-[16px]">undo</span>
                             <span>{t('undo')}</span>

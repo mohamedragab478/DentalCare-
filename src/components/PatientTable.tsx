@@ -121,9 +121,118 @@ export const PatientTable: React.FC<PatientTableProps> = ({
         </div>
       </div>
 
-      {/* Patient Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-[#e2e8f0] dark:border-slate-800 overflow-hidden shadow-xs">
-        <div className="overflow-x-auto">
+      {/* Patient Table (Desktop / Tablet: sm+) & Mobile Card Grid (< sm) */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-[#e2e8f0] dark:border-slate-800 overflow-hidden shadow-xs">
+        {/* 1. Mobile Cards View (< sm screens) */}
+        <div className="block sm:hidden divide-y divide-slate-100 dark:divide-slate-800">
+          {displayedPatients.map((patient) => {
+            const countdown = getAppointmentCountdown(patient.nextVisit, patient.nextVisitTime);
+
+            return (
+              <div
+                key={patient.id}
+                className="p-4 space-y-3 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors"
+              >
+                {/* Header: Avatar, Name, ID & In-Clinic Status */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    {patient.avatar ? (
+                      <img
+                        src={patient.avatar}
+                        alt={patient.name}
+                        className="w-11 h-11 rounded-full object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+                      />
+                    ) : (
+                      <div
+                        className={`w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${getAvatarBg(
+                          patient.initials
+                        )}`}
+                      >
+                        {patient.initials}
+                      </div>
+                    )}
+                    <div>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-bold text-sm text-slate-900 dark:text-white">
+                          {patient.name}
+                        </span>
+                        {patient.inClinic && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            <span>{t('in_clinic')}</span>
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        <span className="font-mono font-semibold">#{patient.id}</span>
+                        <span>•</span>
+                        <span>{patient.age} {t('years_old')}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Call Direct Link */}
+                  {patient.phone && (
+                    <a
+                      href={`tel:${patient.phone}`}
+                      className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-[#006194] dark:hover:text-[#00a3e0] flex items-center justify-center transition-colors shrink-0"
+                      title={isRTL ? "اتصال بالمريض" : "Call patient"}
+                    >
+                      <span className="material-symbols-outlined text-[18px]">call</span>
+                    </a>
+                  )}
+                </div>
+
+                {/* Details Grid */}
+                <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                  <div>
+                    <span className="text-[10px] uppercase font-semibold text-slate-400 dark:text-slate-500 block">
+                      {t('treatment_type')}
+                    </span>
+                    <span className="text-slate-700 dark:text-slate-300 font-medium truncate block">
+                      {patient.treatmentType || (isRTL ? 'كشف دوري' : 'General')}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-semibold text-slate-400 dark:text-slate-500 block">
+                      {t('next_visit')}
+                    </span>
+                    {patient.nextVisit ? (
+                      <span className="text-[#006194] dark:text-[#00a3e0] font-bold truncate block">
+                        {patient.nextVisit}
+                        {countdown.status !== 'none' && (
+                          <span className="text-[10px] opacity-80 ms-1 font-normal">
+                            ({isRTL ? countdown.badgeArabic : countdown.badgeEnglish})
+                          </span>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400 text-xs">-</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Action button: Full width on mobile for easy one-handed thumb tap */}
+                <button
+                  onClick={() => onSelectPatient(patient)}
+                  className="w-full py-2.5 px-4 rounded-xl bg-[#006194] hover:bg-[#004b73] text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-[0.99] min-h-[42px]"
+                >
+                  <span className="material-symbols-outlined text-[16px]">folder_shared</span>
+                  <span>{t('open_chart')}</span>
+                </button>
+              </div>
+            );
+          })}
+
+          {displayedPatients.length === 0 && (
+            <div className="p-8 text-center text-slate-500 dark:text-slate-400 text-xs">
+              {t('no_matching_patients')}
+            </div>
+          )}
+        </div>
+
+        {/* 2. Desktop & Tablet Table (sm+ screens) */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-start border-collapse">
             <thead>
               <tr className="border-b border-[#e2e8f0] dark:border-slate-800 bg-[#f8fafc] dark:bg-slate-800/60">

@@ -55,7 +55,7 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="font-headline font-bold text-2xl sm:text-3xl text-slate-900 dark:text-white">
-            {t('welcome_back')}, {patient.name.split(' ')[0]} 👋
+            {t('welcome_back')}, {patient.name.split(' ')[0]}
           </h1>
           <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mt-1">
             {t('patient_overview_subtitle')}
@@ -64,7 +64,7 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
 
         <button
           onClick={onBookAppointment}
-          className="bg-[#006194] hover:bg-[#004b73] text-white px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center gap-2 shadow-xs cursor-pointer active:scale-95"
+          className="bg-[#006194] hover:bg-[#004b73] text-white px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center gap-2 shadow-xs cursor-pointer active:scale-95 w-full sm:w-auto justify-center min-h-[42px]"
         >
           <span className="material-symbols-outlined text-[18px]">event_available</span>
           <span>{t('my_appointments')}</span>
@@ -74,7 +74,7 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
       {/* Main Grid: Profile Card + Next Appointment */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
         {/* Profile Card (4 cols) */}
-        <div className="md:col-span-4 bg-white dark:bg-slate-900 rounded-3xl border border-[#e2e8f0] dark:border-slate-800 p-6 shadow-xs flex flex-col items-center text-center">
+        <div className="md:col-span-4 bg-white dark:bg-slate-900 rounded-2xl md:rounded-3xl border border-[#e2e8f0] dark:border-slate-800 p-5 sm:p-6 shadow-xs flex flex-col items-center text-center">
           <div className="relative mb-4">
             {patient.avatar ? (
               <img
@@ -157,10 +157,15 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
 
               {/* Quick status pill for remaining days */}
               {appointmentCountdown.status !== 'none' && (
-                <span className="text-[11px] font-bold text-white bg-black/25 px-3 py-1 rounded-xl border border-white/15">
-                  {appointmentCountdown.diffDays > 0 && `⏳ فاضل ${appointmentCountdown.diffDays} أيام على الموعد`}
-                  {appointmentCountdown.diffDays === 0 && `🔔 موعدك اليوم!`}
-                  {appointmentCountdown.diffDays < 0 && `⚠️ فات موعد الزيارة منذ ${Math.abs(appointmentCountdown.diffDays)} يوم`}
+                <span className="text-[11px] font-bold text-white bg-black/25 px-3 py-1 rounded-xl border border-white/15 flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[14px]">
+                    {appointmentCountdown.diffDays > 0 ? 'schedule' : appointmentCountdown.diffDays === 0 ? 'notifications_active' : 'warning'}
+                  </span>
+                  <span>
+                    {appointmentCountdown.diffDays > 0 && (isRTL ? `متبقي ${appointmentCountdown.diffDays} أيام على الموعد` : `${appointmentCountdown.diffDays} days remaining`)}
+                    {appointmentCountdown.diffDays === 0 && (isRTL ? 'موعدك اليوم' : 'Your appointment is today')}
+                    {appointmentCountdown.diffDays < 0 && (isRTL ? `فات موعد الزيارة منذ ${Math.abs(appointmentCountdown.diffDays)} يوم` : `Appointment was ${Math.abs(appointmentCountdown.diffDays)} days ago`)}
+                  </span>
                 </span>
               )}
             </div>
@@ -205,16 +210,10 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
               </div>
             </div>
 
-            <div className="flex gap-2 flex-wrap">
-              <button 
-                onClick={() => alert(`Appointment on ${patient.nextVisit || '28 Aug 2026'} at ${patient.nextVisitTime || '10:30 AM'} added to your calendar.`)}
-                className="bg-white text-[#006194] hover:bg-blue-50 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95"
-              >
-                {t('add_to_calendar')}
-              </button>
+            <div className="flex gap-2 flex-wrap w-full sm:w-auto">
               <button 
                 onClick={onBookAppointment}
-                className="bg-white/15 hover:bg-white/25 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-95 border border-white/20"
+                className="flex-1 sm:flex-none bg-white text-[#006194] hover:bg-blue-50 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95 text-center"
               >
                 {t('reschedule')}
               </button>

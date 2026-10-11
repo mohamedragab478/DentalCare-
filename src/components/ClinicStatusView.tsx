@@ -31,19 +31,19 @@ export const ClinicStatusView: React.FC<ClinicStatusViewProps> = ({
         </div>
 
         {/* Current Doctor Active Room Badge */}
-        <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 px-4 py-2 rounded-2xl flex items-center gap-2.5 text-xs shadow-2xs">
+        <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 p-3 sm:px-4 sm:py-2 rounded-xl sm:rounded-2xl flex flex-wrap items-center gap-2 sm:gap-2.5 text-xs shadow-2xs w-full sm:w-auto">
           <span className="w-2.5 h-2.5 rounded-full bg-[#006194] dark:bg-[#00a3e0] animate-pulse"></span>
           <span className="text-slate-600 dark:text-slate-300 font-medium">
             {isRTL ? "المستخدم الحالي:" : "Logged in as:"} <strong className="text-[#006194] dark:text-[#00a3e0]">{currentDoctorName}</strong>
           </span>
-          <span className="text-slate-300 dark:text-slate-600">|</span>
+          <span className="text-slate-300 dark:text-slate-600 hidden sm:inline">|</span>
           <span className="text-slate-600 dark:text-slate-300">
             {isRTL ? "العيادة المسجلة:" : "Current Room:"} <strong className="text-slate-900 dark:text-white">{clinics.find(c => c.doctorName === currentDoctorName)?.name || (isRTL ? 'غير مسكن بغرفة' : 'None (Roaming)')}</strong>
           </span>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {clinics.map((room) => {
           const isMyRoom = room.doctorName === currentDoctorName;
           const isOtherDoctorRoom = room.status === 'occupied' && !isMyRoom;
@@ -52,7 +52,7 @@ export const ClinicStatusView: React.FC<ClinicStatusViewProps> = ({
           return (
             <div
               key={room.id}
-              className={`bg-white dark:bg-slate-900 rounded-3xl border p-6 shadow-xs flex flex-col justify-between transition-all ${
+              className={`bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border p-4 sm:p-6 shadow-xs flex flex-col justify-between transition-all ${
                 isMyRoom
                   ? 'border-[#006194] dark:border-blue-500 ring-2 ring-[#006194]/20 shadow-md'
                   : isOtherDoctorRoom

@@ -39,7 +39,7 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({
         {/* ========================================================================= */}
         {/* LEFT PANEL (~45% Desktop): BRAND PANEL                                    */}
         {/* ========================================================================= */}
-        <div className="lg:col-span-5 bg-[#0F4C5C] text-white p-6 sm:p-10 lg:p-14 flex flex-col justify-between relative overflow-hidden select-none">
+        <div className="lg:col-span-5 bg-[#0F4C5C] text-white p-4 sm:p-8 lg:p-14 flex flex-col justify-between relative overflow-hidden select-none">
           {/* Subtle Organic SVG Graphic Waves Background */}
           <div className="absolute inset-0 opacity-10 pointer-events-none overflow-hidden">
             <svg
@@ -65,50 +65,55 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({
           </div>
 
           {/* Top Brand Bar */}
-          <div className="relative z-10 flex items-center justify-between gap-4">
+          <div className="relative z-10 flex items-center justify-between gap-3">
             {/* Clean Logo Mark + Wordmark */}
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-md text-teal-200 border border-white/20 flex items-center justify-center shadow-sm">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/10 backdrop-blur-md text-teal-200 border border-white/20 flex items-center justify-center shadow-sm shrink-0">
                 <svg
-                  className="w-6 h-6 fill-current text-white"
+                  className="w-5 h-5 sm:w-6 sm:h-6 fill-current text-white"
                   viewBox="0 0 24 24"
                   xmlns="http://www.w3.org/2000/svg"
                 >
                   <path d="M12 2C8.5 2 6 4.5 6 8c0 3 1.5 6 3 9.5 1 2.3 2 4.5 3 4.5s2-2.2 3-4.5c1.5-3.5 3-6.5 3-9.5 0-3.5-2.5-6-6-6zm0 4c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2z" />
                 </svg>
               </div>
-              <span className="text-xl font-bold tracking-tight text-white font-serif-display">
-                DentalCare
-              </span>
+              <div>
+                <span className="text-lg sm:text-xl font-bold tracking-tight text-white font-serif-display block leading-tight">
+                  DentalCare
+                </span>
+                <span className="text-[10px] text-teal-200/80 font-medium lg:hidden">
+                  {isRTL ? 'المنظومة السريرية وبوابة المرضى' : 'Clinical Workspace & Portal'}
+                </span>
+              </div>
             </div>
 
             {/* Language & Theme controls for header/mobile */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <button
                 type="button"
                 onClick={toggleLanguage}
-                className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-semibold border border-white/15 transition-all cursor-pointer flex items-center gap-1.5"
+                className="px-2.5 sm:px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-semibold border border-white/15 transition-all cursor-pointer flex items-center gap-1"
                 title={lang === 'ar' ? 'Switch to English' : 'التحويل للعربية'}
               >
-                <span className="material-symbols-outlined text-[16px]">language</span>
+                <span className="material-symbols-outlined text-[15px]">language</span>
                 <span>{lang === 'ar' ? 'EN' : 'عربي'}</span>
               </button>
 
               <button
                 type="button"
                 onClick={toggleTheme}
-                className="w-8.5 h-8.5 rounded-lg bg-white/10 hover:bg-white/20 text-white border border-white/15 flex items-center justify-center transition-all cursor-pointer"
+                className="w-8 h-8 sm:w-8.5 sm:h-8.5 rounded-lg bg-white/10 hover:bg-white/20 text-white border border-white/15 flex items-center justify-center transition-all cursor-pointer"
                 title={theme === 'dark' ? t('light_mode') : t('dark_mode')}
               >
-                <span className="material-symbols-outlined text-[18px]">
+                <span className="material-symbols-outlined text-[17px]">
                   {theme === 'dark' ? 'light_mode' : 'dark_mode'}
                 </span>
               </button>
             </div>
           </div>
 
-          {/* Middle Brand Welcome Hero Section */}
-          <div className="relative z-10 py-10 lg:py-16 space-y-4 max-w-lg">
+          {/* Middle Brand Welcome Hero Section - Shown on desktop and tablet */}
+          <div className="relative z-10 py-6 lg:py-16 space-y-4 max-w-lg hidden lg:block">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-teal-100 font-medium">
               <span className="w-2 h-2 rounded-full bg-teal-300 animate-pulse"></span>
               <span>{t('brand_tagline')}</span>
@@ -125,8 +130,8 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({
             </p>
           </div>
 
-          {/* Bottom Brand Footer */}
-          <div className="relative z-10 text-xs text-teal-200/70 pt-6 border-t border-white/10 flex items-center justify-between">
+          {/* Bottom Brand Footer - Desktop only */}
+          <div className="relative z-10 text-xs text-teal-200/70 pt-6 border-t border-white/10 items-center justify-between hidden lg:flex">
             <span>DentalCare Pro © 2026</span>
             <span className="flex items-center gap-1">
               <span className="material-symbols-outlined text-[15px]">verified</span>
@@ -138,7 +143,7 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({
         {/* ========================================================================= */}
         {/* RIGHT PANEL (~55% Desktop): FORM CONTAINER & SLIM STATUS STRIP            */}
         {/* ========================================================================= */}
-        <div className="lg:col-span-7 bg-[#FAF7F2] dark:bg-[#0F172A] p-6 sm:p-12 lg:p-16 flex flex-col justify-between items-center transition-colors">
+        <div className="lg:col-span-7 bg-[#FAF7F2] dark:bg-[#0F172A] p-4 sm:p-10 lg:p-16 flex flex-col justify-between items-center transition-colors">
           
           {/* Main Form Box (No card-in-card background) */}
           <div className="w-full max-w-md my-auto">

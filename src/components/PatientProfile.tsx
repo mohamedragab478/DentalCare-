@@ -195,23 +195,29 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
                 <span className="material-symbols-outlined text-[16px]">cake</span>
                 {patient.age} {t('age')}
               </span>
-              <span className="flex items-center gap-1">
-                <span className="material-symbols-outlined text-[16px]">call</span>
-                {patient.phone}
-              </span>
+              {patient.phone ? (
+                <a
+                  href={`tel:${patient.phone}`}
+                  className="flex items-center gap-1 hover:text-[#006194] dark:hover:text-[#00a3e0] transition-colors"
+                  title={isRTL ? "اتصال" : "Call"}
+                >
+                  <span className="material-symbols-outlined text-[16px]">call</span>
+                  <span>{patient.phone}</span>
+                </a>
+              ) : null}
             </div>
           </div>
         </div>
 
-        {/* Header Actions - Doctors only for clinical edits */}
+        {/* Header Actions - Doctors only for clinical edits: 2-col on mobile (< sm) */}
         {!isReadOnly && (
-          <div className="flex flex-wrap gap-2.5">
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-2.5 w-full md:w-auto">
             <button
               onClick={() => {
                 setActivePrescriptionForPrint(null);
                 setIsPrescriptionModalOpen(true);
               }}
-              className="px-4 py-2 bg-[#006194] hover:bg-[#004b73] text-white rounded-xl transition-colors text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+              className="min-h-[40px] px-3 sm:px-4 py-2 bg-[#006194] hover:bg-[#004b73] text-white rounded-xl transition-colors text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
               title={isRTL ? "إصدار وطباعة روشتة طبية للمريض" : "Print Prescription"}
             >
               <span className="material-symbols-outlined text-[16px]">receipt_long</span>
@@ -221,7 +227,7 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
             {onScheduleVisit && (
               <button
                 onClick={() => onScheduleVisit(patient)}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-colors text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+                className="min-h-[40px] px-3 sm:px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-colors text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
               >
                 <span className="material-symbols-outlined text-[16px]">calendar_add_on</span>
                 <span>{t('schedule_next_visit')}</span>
@@ -231,7 +237,7 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
             {onEditPatient && (
               <button
                 onClick={onEditPatient}
-                className="px-3.5 py-2 bg-white dark:bg-slate-800 border border-[#e2e8f0] dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-xs font-semibold flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                className="min-h-[40px] px-3 sm:px-3.5 py-2 bg-white dark:bg-slate-800 border border-[#e2e8f0] dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-xs font-semibold flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[16px]">edit</span>
                 <span>{t('edit_patient')}</span>
@@ -240,7 +246,7 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
             {onAddVisit && (
               <button
                 onClick={onAddVisit}
-                className="px-4 py-2 bg-[#006194] text-white rounded-xl hover:bg-[#004b73] transition-colors text-xs font-semibold flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+                className="min-h-[40px] px-3 sm:px-4 py-2 bg-[#006194] text-white rounded-xl hover:bg-[#004b73] transition-colors text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
               >
                 <span className="material-symbols-outlined text-[16px]">event</span>
                 <span>{t('record_consultation')}</span>
@@ -250,8 +256,8 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
         )}
       </div>
 
-      {/* Profile Tabs */}
-      <div className="border-b border-[#e2e8f0] dark:border-slate-800 mb-6 flex gap-6 md:gap-8 overflow-x-auto text-sm font-semibold">
+      {/* Profile Tabs - Touch momentum scroller on mobile */}
+      <div className="border-b border-[#e2e8f0] dark:border-slate-800 mb-6 flex gap-3 sm:gap-8 overflow-x-auto no-scrollbar scroll-smooth snap-x text-xs sm:text-sm font-semibold pb-0.5">
         {(['Overview', 'Dental Chart', 'Visits', 'Medical Images', 'Prescriptions'] as const).map((tab) => (
           <button
             key={tab}

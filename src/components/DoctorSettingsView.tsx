@@ -411,7 +411,7 @@ export const DoctorSettingsView: React.FC<DoctorSettingsViewProps> = ({
           <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-800">
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-xl bg-[#006194] hover:bg-[#004b73] text-white text-xs font-bold shadow-md cursor-pointer transition-transform active:scale-95 flex items-center gap-1.5"
+              className="w-full sm:w-auto min-h-[42px] justify-center px-6 py-2.5 rounded-xl bg-[#006194] hover:bg-[#004b73] text-white text-xs font-bold shadow-md cursor-pointer transition-transform active:scale-95 flex items-center gap-1.5"
             >
               <span className="material-symbols-outlined text-[18px]">save</span>
               <span>{t('save')}</span>
@@ -553,7 +553,7 @@ export const DoctorSettingsView: React.FC<DoctorSettingsViewProps> = ({
             <button
               type="submit"
               disabled={pwdLoading}
-              className="px-6 py-2.5 rounded-xl bg-[#006194] hover:bg-[#004b73] disabled:opacity-50 text-white text-xs font-bold shadow-md cursor-pointer transition-transform active:scale-95 flex items-center gap-2"
+              className="w-full sm:w-auto min-h-[42px] justify-center px-6 py-2.5 rounded-xl bg-[#006194] hover:bg-[#004b73] disabled:opacity-50 text-white text-xs font-bold shadow-md cursor-pointer transition-transform active:scale-95 flex items-center gap-2"
             >
               <span className="material-symbols-outlined text-[18px]">
                 {pwdLoading ? 'hourglass_top' : 'key'}

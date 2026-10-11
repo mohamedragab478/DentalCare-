@@ -448,6 +448,18 @@ export const DentalChart: React.FC<DentalChartProps> = ({
     }
   });
 
+  // Full FDI Continuous sequence for next/prev stepping
+  const ALL_FDI_ORDER = [...UPPER_ARCH_ORDER, ...LOWER_ARCH_ORDER];
+  const currentToothIdx = ALL_FDI_ORDER.indexOf(selectedToothId);
+  const handlePrevTooth = () => {
+    const prevIdx = (currentToothIdx - 1 + ALL_FDI_ORDER.length) % ALL_FDI_ORDER.length;
+    handleSelectTooth(ALL_FDI_ORDER[prevIdx]);
+  };
+  const handleNextTooth = () => {
+    const nextIdx = (currentToothIdx + 1) % ALL_FDI_ORDER.length;
+    handleSelectTooth(ALL_FDI_ORDER[nextIdx]);
+  };
+
   // Render authentic anatomical SVG icon inside the tooth node
   const renderToothAnatomyIcon = (toothId: number, cx: number, cy: number, iconColor: string) => {
     const { type } = getToothType(toothId);
@@ -538,8 +550,114 @@ export const DentalChart: React.FC<DentalChartProps> = ({
           </div>
         </div>
 
+        {/* Mobile Quick Tooth Navigator & Fast FDI Strips (Sm:hidden) */}
+        <div className="block sm:hidden bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2.5">
+          <div className="flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={handlePrevTooth}
+              className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 flex items-center justify-center cursor-pointer min-h-[36px] min-w-[36px]"
+              title={isRTL ? "السن السابق" : "Previous tooth"}
+              aria-label="Previous tooth"
+            >
+              <span className="material-symbols-outlined text-[18px]">
+                {isRTL ? 'chevron_right' : 'chevron_left'}
+              </span>
+            </button>
+
+            <div className="flex items-center gap-2">
+              <span className="w-8 h-8 rounded-lg bg-[#006194] text-white flex items-center justify-center font-bold text-sm shadow-xs font-mono">
+                {selectedToothId}
+              </span>
+              <div className="text-center">
+                <span className="text-xs font-bold text-slate-900 block leading-tight">
+                  {toothTypeInfo.arabicName}
+                </span>
+                <span className="text-[10px] text-slate-500 font-medium">
+                  {toothTypeInfo.englishName}
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleNextTooth}
+              className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 flex items-center justify-center cursor-pointer min-h-[36px] min-w-[36px]"
+              title={isRTL ? "السن التالي" : "Next tooth"}
+              aria-label="Next tooth"
+            >
+              <span className="material-symbols-outlined text-[18px]">
+                {isRTL ? 'chevron_left' : 'chevron_right'}
+              </span>
+            </button>
+          </div>
+
+          {/* Horizontal scrollable tooth strip for Upper Arch & Lower Arch */}
+          <div className="space-y-1.5 pt-1 border-t border-slate-200/80">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-bold text-slate-400 w-11 shrink-0">
+                {isRTL ? 'علوي' : 'Upper'}
+              </span>
+              <div className="flex gap-1 overflow-x-auto no-scrollbar scroll-smooth py-0.5">
+                {UPPER_ARCH_ORDER.map((id) => {
+                  const tRec = teeth[id];
+                  const hasStatus = tRec && tRec.status && tRec.status !== 'none';
+                  const isSel = selectedToothId === id;
+                  return (
+                    <button
+                      key={`strip-upper-${id}`}
+                      type="button"
+                      onClick={() => handleSelectTooth(id)}
+                      className={`min-w-[32px] h-7 px-1 rounded-md text-[11px] font-mono font-bold flex items-center justify-center gap-0.5 transition-colors cursor-pointer shrink-0 ${
+                        isSel
+                          ? 'bg-[#006194] text-white ring-1 ring-[#006194]'
+                          : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      <span>{id}</span>
+                      {hasStatus && (
+                        <span className={`w-1.5 h-1.5 rounded-full ${isSel ? 'bg-white' : 'bg-emerald-500'}`} />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-bold text-slate-400 w-11 shrink-0">
+                {isRTL ? 'سفلي' : 'Lower'}
+              </span>
+              <div className="flex gap-1 overflow-x-auto no-scrollbar scroll-smooth py-0.5">
+                {LOWER_ARCH_ORDER.map((id) => {
+                  const tRec = teeth[id];
+                  const hasStatus = tRec && tRec.status && tRec.status !== 'none';
+                  const isSel = selectedToothId === id;
+                  return (
+                    <button
+                      key={`strip-lower-${id}`}
+                      type="button"
+                      onClick={() => handleSelectTooth(id)}
+                      className={`min-w-[32px] h-7 px-1 rounded-md text-[11px] font-mono font-bold flex items-center justify-center gap-0.5 transition-colors cursor-pointer shrink-0 ${
+                        isSel
+                          ? 'bg-[#006194] text-white ring-1 ring-[#006194]'
+                          : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      <span>{id}</span>
+                      {hasStatus && (
+                        <span className={`w-1.5 h-1.5 rounded-full ${isSel ? 'bg-white' : 'bg-emerald-500'}`} />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Interactive Arch Canvas without jitter */}
-        <div className="flex flex-col items-center justify-center bg-[#f8fafc] rounded-2xl border border-slate-200 p-4 md:p-6 select-none relative overflow-hidden">
+        <div className="flex flex-col items-center justify-center bg-[#f8fafc] rounded-2xl border border-slate-200 p-3 sm:p-6 select-none relative overflow-hidden">
           {/* Anatomical Key Legend Bar */}
           <div className="w-full flex justify-between items-center text-[11px] font-semibold text-slate-500 px-2 pb-2 border-b border-slate-200/80 mb-2">
             <span className="flex items-center gap-1">

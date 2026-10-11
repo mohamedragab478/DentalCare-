@@ -299,13 +299,13 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4">
       {/* Modal Box: ALWAYS WHITE as requested */}
-      <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-200 text-slate-900 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-2xl sm:rounded-3xl max-w-lg w-full p-4 sm:p-8 shadow-2xl border border-slate-200 text-slate-900 animate-in fade-in zoom-in-95 max-h-[92vh] overflow-y-auto">
         {/* Header */}
         <div className="flex justify-between items-center border-b border-slate-100 pb-4 mb-4">
           <div>
-            <h2 className="font-headline font-bold text-xl text-slate-900">
+            <h2 className="font-headline font-bold text-lg sm:text-xl text-slate-900">
               {isEditMode 
                 ? (isRTL ? "تعديل بيانات المريض" : "Edit Patient Profile") 
                 : (isRTL ? "إضافة مريض لطابور اليوم" : "Add Patient to Queue")}
@@ -326,30 +326,30 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
 
         {/* Tab Selector (only when NOT in edit mode and existingPatients available) */}
         {!isEditMode && existingPatients.length > 0 && (
-          <div className="flex bg-slate-100 p-1 rounded-2xl mb-5 text-xs font-bold border border-slate-200">
+          <div className="flex bg-slate-100 p-1 rounded-xl sm:rounded-2xl mb-5 text-[11px] sm:text-xs font-bold border border-slate-200">
             <button
               type="button"
               onClick={() => setActiveTab('existing')}
-              className={`flex-1 py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              className={`flex-1 py-2 sm:py-2.5 rounded-lg sm:rounded-xl transition-all flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer text-center ${
                 activeTab === 'existing'
                   ? 'bg-[#006194] text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <span className="material-symbols-outlined text-[17px]">folder_shared</span>
-              <span>{isRTL ? "اختيار مريض مسجل بالعيادة" : "Select Existing Patient"}</span>
+              <span className="material-symbols-outlined text-[16px] sm:text-[17px]">folder_shared</span>
+              <span>{isRTL ? "مريض مسجل" : "Existing Patient"}</span>
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('new')}
-              className={`flex-1 py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              className={`flex-1 py-2 sm:py-2.5 rounded-lg sm:rounded-xl transition-all flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer text-center ${
                 activeTab === 'new'
                   ? 'bg-[#006194] text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <span className="material-symbols-outlined text-[17px]">person_add</span>
-              <span>{isRTL ? "تسجيل مريض جديد" : "Register New Patient"}</span>
+              <span className="material-symbols-outlined text-[16px] sm:text-[17px]">person_add</span>
+              <span>{isRTL ? "مريض جديد" : "New Patient"}</span>
             </button>
           </div>
         )}
@@ -467,11 +467,11 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
             )}
 
             {/* Actions */}
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 sm:gap-3 pt-4 border-t border-slate-100">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 cursor-pointer"
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 cursor-pointer min-h-[42px] flex items-center justify-center"
               >
                 {t('cancel')}
               </button>
@@ -479,7 +479,7 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
                 type="button"
                 disabled={!selectedExistingPatient}
                 onClick={handleAddExistingToQueue}
-                className="px-6 py-2.5 rounded-xl bg-[#006194] hover:bg-[#004b73] disabled:opacity-50 text-white text-xs font-bold shadow-md cursor-pointer transition-transform active:scale-95 flex items-center gap-1.5"
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-[#006194] hover:bg-[#004b73] disabled:opacity-50 text-white text-xs font-bold shadow-md cursor-pointer transition-transform active:scale-95 flex items-center justify-center gap-1.5 min-h-[42px]"
               >
                 <span className="material-symbols-outlined text-[18px]">how_to_reg</span>
                 <span>{isRTL ? "إضافة إلى طابور كشوفات اليوم" : "Add to Today's Queue"}</span>
@@ -684,17 +684,17 @@ export const AddPatientModal: React.FC<AddPatientModalProps> = ({
               />
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 sm:gap-3 pt-4 border-t border-slate-100">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 cursor-pointer"
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 cursor-pointer min-h-[42px] flex items-center justify-center"
               >
                 {t('cancel')}
               </button>
               <button
                 type="submit"
-                className="px-6 py-2.5 rounded-xl bg-[#006194] hover:bg-[#004b73] text-white text-xs font-bold shadow-md cursor-pointer transition-transform active:scale-95 flex items-center gap-1.5"
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-[#006194] hover:bg-[#004b73] text-white text-xs font-bold shadow-md cursor-pointer transition-transform active:scale-95 flex items-center justify-center gap-1.5 min-h-[42px]"
               >
                 <span className="material-symbols-outlined text-[18px]">
                   {isEditMode ? 'save' : 'person_add'}
