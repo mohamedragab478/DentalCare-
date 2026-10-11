@@ -30,6 +30,39 @@ export interface VisitRecord {
   cost?: number;
 }
 
+export type MealTiming = 
+  | 'before_meal_30m'         // قبل الأكل بنصف ساعة
+  | 'before_meal_immediately' // قبل الأكل مباشرة
+  | 'after_meal'               // بعد الأكل
+  | 'after_meal_30m'          // بعد الأكل بنصف ساعة
+  | 'as_needed';              // عند اللزوم
+
+export interface PrescriptionItem {
+  id: string;
+  medicineName: string;
+  dosage?: string;
+  frequency: string;          // e.g. "3 مرات يومياً"
+  timing: MealTiming;         // MealTiming
+  durationDays?: string;      // e.g. "5 أيام"
+  notes?: string;             // ملاحظات خاصة
+}
+
+export interface Prescription {
+  id: string;
+  patientId: string;
+  patientName: string;
+  patientAge?: number;
+  patientGender?: 'Male' | 'Female';
+  doctorName: string;
+  doctorSpecialty?: string;
+  clinicName?: string;
+  date: string;
+  diagnosis?: string;
+  items: PrescriptionItem[];
+  instructions?: string;
+  createdAt: string;
+}
+
 export interface Patient {
   id: string;
   name: string;
@@ -53,6 +86,7 @@ export interface Patient {
   teeth: Record<number, ToothRecord>;
   visits: VisitRecord[];
   images: MedicalImage[];
+  prescriptions?: Prescription[];
 }
 
 export interface ClinicRoom {

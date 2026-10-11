@@ -397,21 +397,8 @@ export const UnifiedLogin: React.FC<UnifiedLoginProps> = ({
           </button>
         </form>
 
-        {/* Footer actions: Create account link + Single Trust Cue */}
+        {/* Footer: Single Trust Cue */}
         <div className="mt-8 pt-6 border-t border-slate-200/80 dark:border-slate-800 flex flex-col items-center gap-4 text-center">
-          {onGoToSignUp && (
-            <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">
-              <span>{t('dont_have_account')} </span>
-              <button
-                type="button"
-                onClick={onGoToSignUp}
-                className="text-[#0F4C5C] dark:text-teal-400 font-bold hover:underline cursor-pointer"
-              >
-                {t('create_one')}
-              </button>
-            </p>
-          )}
-
           {/* Single Trust Cue */}
           <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 bg-slate-100/80 dark:bg-slate-800/60 px-3 py-1 rounded-full border border-slate-200 dark:border-slate-700/50">
             <span className="material-symbols-outlined text-[15px] text-[#0F4C5C] dark:text-teal-400">

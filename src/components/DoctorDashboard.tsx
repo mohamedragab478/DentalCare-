@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Patient, ClinicRoom, DoctorProfile } from '../types';
 import { useAppThemeLanguage } from '../context/ThemeLanguageContext';
-import { getAppointmentCountdown, formatDateArabic, parseAppointmentDate } from '../utils/dateUtils';
+import { getAppointmentCountdown, formatDateArabic, parseAppointmentDate, dateMatchesTargetDay } from '../utils/dateUtils';
 
 interface DoctorDashboardProps {
   patients: Patient[];
@@ -20,6 +20,7 @@ interface DoctorDashboardProps {
   onScheduleVisit?: (patient?: Patient, preselectedDate?: Date | string) => void;
   onAssignDoctor?: (roomId: number) => void;
   onVacateDoctor?: (roomId: number) => void;
+  onRemoveFromQueue?: (patientId: string, targetDate: Date, dayNames: { arName: string; enName: string }) => void;
 }
 
 export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
@@ -38,11 +39,25 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
   onAddPatient,
   onScheduleVisit,
   onAssignDoctor,
-  onVacateDoctor
+  onVacateDoctor,
+  onRemoveFromQueue
 }) => {
   const { t, isRTL, lang } = useAppThemeLanguage();
 
   const [internalCompletedIds, setInternalCompletedIds] = useState<string[]>(['849202']);
+
+  const handleRemovePatientFromQueue = (
+    patientId: string,
+    targetDate: Date,
+    dayNames: { arName: string; enName: string },
+    e: React.MouseEvent
+  ) => {
+    e.stopPropagation();
+    setInternalCompletedIds((prev) => prev.filter((id) => id !== patientId));
+    if (onRemoveFromQueue) {
+      onRemoveFromQueue(patientId, targetDate, dayNames);
+    }
+  };
   const [visitFilter, setVisitFilter] = useState<'All' | 'Completed' | 'Scheduled'>('All');
   const [selectedDayKey, setSelectedDayKey] = useState<string>(() => {
     const todayNum = new Date().getDay();
@@ -120,59 +135,20 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
       targetDate.getMonth() === today.getMonth() &&
       targetDate.getFullYear() === today.getFullYear();
 
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
-    const isTomorrowTarget =
-      targetDate.getDate() === tomorrow.getDate() &&
-      targetDate.getMonth() === tomorrow.getMonth() &&
-      targetDate.getFullYear() === tomorrow.getFullYear();
-
     // 1. Match via visits[] array - any visit dated on targetDate
     if (patient.visits && patient.visits.length > 0) {
-      const hasVisitOnDay = patient.visits.some((v) => dateStrMatchesTarget(v.date, targetDate));
+      const hasVisitOnDay = patient.visits.some((v) => dateMatchesTargetDay(v.date, targetDate, arName, enName));
       if (hasVisitOnDay) return true;
     }
 
     // 2. Match via lastVisit (patients currently in queue today)
     if (isTodayTarget && patient.lastVisit) {
-      if (dateStrMatchesTarget(patient.lastVisit, targetDate)) return true;
+      if (dateMatchesTargetDay(patient.lastVisit, targetDate, arName, enName)) return true;
     }
 
     // 3. Match via nextVisit
     if (!patient.nextVisit) return false;
-    const visitStr = patient.nextVisit.trim().toLowerCase();
-
-    // 3a. Keyword check
-    if (isTodayTarget && (visitStr === 'today' || visitStr === 'اليوم')) return true;
-    if (isTomorrowTarget && (visitStr === 'tomorrow' || visitStr === 'غداً' || visitStr === 'غدا')) return true;
-
-    // 3b. Day name check (e.g., "السبت", "Saturday")
-    if (visitStr.includes(arName.toLowerCase()) || visitStr.includes(enName.toLowerCase())) {
-      return true;
-    }
-
-    // 3c. Direct Date parse check
-    if (dateStrMatchesTarget(patient.nextVisit, targetDate)) return true;
-
-    // 3d. Substring day number & month check (e.g. "24 Aug" or "24/08")
-    const dayNumStr = targetDate.getDate().toString();
-    const padDayStr = dayNumStr.padStart(2, '0');
-    if (visitStr.includes(padDayStr) || visitStr.includes(dayNumStr)) {
-      const monthNumStr = (targetDate.getMonth() + 1).toString();
-      const padMonthStr = monthNumStr.padStart(2, '0');
-      const monthShortEn = targetDate.toLocaleDateString('en-US', { month: 'short' }).toLowerCase();
-
-      if (
-        visitStr.includes(monthShortEn) ||
-        visitStr.includes(`/${monthNumStr}`) ||
-        visitStr.includes(`/${padMonthStr}`) ||
-        visitStr.includes(`-${padMonthStr}`)
-      ) {
-        return true;
-      }
-    }
-
-    return false;
+    return dateMatchesTargetDay(patient.nextVisit, targetDate, arName, enName);
   };
 
   // Drag and Drop reordering state
@@ -564,14 +540,25 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                     return (
                       <div
                         key={p.id}
-                        className={`p-4 rounded-2xl border transition-all flex flex-col xl:flex-row xl:items-center justify-between gap-4 ${p.inClinic
+                        className={`relative p-4 rounded-2xl border transition-all flex flex-col xl:flex-row xl:items-center justify-between gap-4 ${p.inClinic
                           ? 'border-emerald-300 dark:border-emerald-800/80 bg-emerald-50/20 dark:bg-emerald-950/20 shadow-xs'
                           : 'border-slate-200 dark:border-slate-800 bg-[#f8fafc] dark:bg-slate-800/60 hover:bg-white dark:hover:bg-slate-800 hover:border-[#006194] dark:hover:border-slate-700'
                           }`}
                       >
+                        {/* Remove from Today's Queue 'X' Button */}
+                        <button
+                          type="button"
+                          onClick={(e) => handleRemovePatientFromQueue(p.id, todayDayObj.targetDate, todayDayObj, e)}
+                          className="absolute top-2 start-2 w-5 h-5 rounded-md flex items-center justify-center text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/60 transition-colors cursor-pointer z-10"
+                          title={isRTL ? 'إزالة من طابور اليوم' : "Remove from today's queue"}
+                          aria-label={isRTL ? 'إزالة من طابور اليوم' : "Remove from today's queue"}
+                        >
+                          <span className="material-symbols-outlined text-[15px] leading-none">close</span>
+                        </button>
+
                         <div className="flex items-center gap-3.5 flex-1 min-w-0">
                           {/* Index Number Badge */}
-                          <div className="flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 shrink-0">
+                          <div className="flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 shrink-0 ms-2 sm:ms-2">
                             <span className="text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300">
                               #{idx + 1}
                             </span>
@@ -702,11 +689,25 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                   return (
                     <div
                       key={p.id}
-                      className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-[#f8fafc] dark:bg-slate-800/60 hover:bg-white dark:hover:bg-slate-800 transition-all flex flex-col xl:flex-row xl:items-center justify-between gap-4"
+                      className="relative p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-[#f8fafc] dark:bg-slate-800/60 hover:bg-white dark:hover:bg-slate-800 transition-all flex flex-col xl:flex-row xl:items-center justify-between gap-4"
                     >
+                      {/* Remove from Specific Day Queue 'X' Button */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          const dayObj = weekDaysWithDates.find((d) => d.key === selectedDayKey) || todayDayObj;
+                          handleRemovePatientFromQueue(p.id, dayObj.targetDate, dayObj, e);
+                        }}
+                        className="absolute top-2 start-2 w-5 h-5 rounded-md flex items-center justify-center text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/60 transition-colors cursor-pointer z-10"
+                        title={isRTL ? 'إزالة من طابور هذا اليوم' : "Remove from this day's queue"}
+                        aria-label={isRTL ? 'إزالة من طابور هذا اليوم' : "Remove from this day's queue"}
+                      >
+                        <span className="material-symbols-outlined text-[15px] leading-none">close</span>
+                      </button>
+
                       <div className="flex items-center gap-3.5 flex-1 min-w-0">
                         {/* Index Number Badge */}
-                        <div className="flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 shrink-0">
+                        <div className="flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 shrink-0 ms-2 sm:ms-2">
                           <span className="text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300">
                             #{idx + 1}
                           </span>
@@ -802,10 +803,21 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                     {completedQueuePatients.map((p, idx) => (
                       <div
                         key={p.id}
-                        className="p-4 rounded-2xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/30 dark:bg-emerald-950/20 opacity-90 transition-all flex flex-col xl:flex-row xl:items-center justify-between gap-4"
+                        className="relative p-4 rounded-2xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/30 dark:bg-emerald-950/20 opacity-90 transition-all flex flex-col xl:flex-row xl:items-center justify-between gap-4"
                       >
+                        {/* Remove from Today's Queue 'X' Button */}
+                        <button
+                          type="button"
+                          onClick={(e) => handleRemovePatientFromQueue(p.id, todayDayObj.targetDate, todayDayObj, e)}
+                          className="absolute top-2 start-2 w-5 h-5 rounded-md flex items-center justify-center text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/60 transition-colors cursor-pointer z-10"
+                          title={isRTL ? 'إزالة من طابور اليوم' : "Remove from today's queue"}
+                          aria-label={isRTL ? 'إزالة من طابور اليوم' : "Remove from today's queue"}
+                        >
+                          <span className="material-symbols-outlined text-[15px] leading-none">close</span>
+                        </button>
+
                         <div className="flex items-center gap-3.5 flex-1 min-w-0">
-                          <div className="flex flex-col items-center justify-center bg-emerald-100/70 dark:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-800 rounded-xl px-2.5 py-1.5 shrink-0">
+                          <div className="flex flex-col items-center justify-center bg-emerald-100/70 dark:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-800 rounded-xl px-2.5 py-1.5 shrink-0 ms-2 sm:ms-2">
                             <span className="text-[11px] font-mono font-bold text-emerald-800 dark:text-emerald-300">
                               #{idx + 1}
                             </span>

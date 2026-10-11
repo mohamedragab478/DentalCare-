@@ -322,3 +322,65 @@ export function getAppointmentCountdown(dateStr?: string, timeStr?: string): App
     isToday: false
   };
 }
+
+export function dateMatchesTargetDay(
+  dateStr?: string,
+  targetDate?: Date,
+  arName?: string,
+  enName?: string
+): boolean {
+  if (!dateStr || !targetDate || typeof dateStr !== 'string') return false;
+  const clean = dateStr.trim().toLowerCase();
+
+  const today = new Date();
+  const isTodayTarget =
+    targetDate.getDate() === today.getDate() &&
+    targetDate.getMonth() === today.getMonth() &&
+    targetDate.getFullYear() === today.getFullYear();
+
+  if (clean.includes('today') || clean.includes('اليوم')) {
+    return isTodayTarget;
+  }
+
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  const isTomorrowTarget =
+    targetDate.getDate() === tomorrow.getDate() &&
+    targetDate.getMonth() === tomorrow.getMonth() &&
+    targetDate.getFullYear() === tomorrow.getFullYear();
+
+  if (clean.includes('tomorrow') || clean.includes('غدا') || clean.includes('غداً')) {
+    return isTomorrowTarget;
+  }
+
+  if (arName && clean.includes(arName.toLowerCase())) return true;
+  if (enName && clean.includes(enName.toLowerCase())) return true;
+
+  const parsed = parseAppointmentDate(dateStr) || new Date(dateStr);
+  if (parsed && !isNaN(parsed.getTime())) {
+    return (
+      parsed.getDate() === targetDate.getDate() &&
+      parsed.getMonth() === targetDate.getMonth() &&
+      parsed.getFullYear() === targetDate.getFullYear()
+    );
+  }
+
+  const dayNumStr = targetDate.getDate().toString();
+  const padDayStr = dayNumStr.padStart(2, '0');
+  if (clean.includes(padDayStr) || clean.includes(dayNumStr)) {
+    const monthNumStr = (targetDate.getMonth() + 1).toString();
+    const padMonthStr = monthNumStr.padStart(2, '0');
+    const monthShortEn = targetDate.toLocaleDateString('en-US', { month: 'short' }).toLowerCase();
+
+    if (
+      clean.includes(monthShortEn) ||
+      clean.includes(`/${monthNumStr}`) ||
+      clean.includes(`/${padMonthStr}`) ||
+      clean.includes(`-${padMonthStr}`)
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}

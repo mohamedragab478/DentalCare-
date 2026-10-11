@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { Patient, ToothStatus } from '../types';
+import { Patient, ToothStatus, Prescription, DoctorProfile } from '../types';
 import { DentalChart } from './DentalChart';
+import { PrescriptionModal } from './PrescriptionModal';
+import { MEAL_TIMING_OPTIONS } from '../data/prescriptionMedicines';
 import { getAppointmentCountdown, formatDateArabic } from '../utils/dateUtils';
 import { useAppThemeLanguage } from '../context/ThemeLanguageContext';
 
@@ -31,7 +33,10 @@ interface PatientProfileProps {
   onDeleteVisit?: (visitId: string) => void;
   onUploadImage?: () => void;
   onEditPatient?: () => void;
+  onSavePrescription?: (prescription: Prescription) => void;
+  onDeletePrescription?: (prescriptionId: string) => void;
   isReadOnly?: boolean;
+  currentDoctor?: DoctorProfile;
 }
 
 export const PatientProfile: React.FC<PatientProfileProps> = ({
@@ -45,13 +50,19 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
   onDeleteVisit,
   onUploadImage,
   onEditPatient,
-  isReadOnly = false
+  onSavePrescription,
+  onDeletePrescription,
+  isReadOnly = false,
+  currentDoctor
 }) => {
   const { t, isRTL } = useAppThemeLanguage();
 
-  const [activeTab, setActiveTab] = useState<'Overview' | 'Dental Chart' | 'Visits' | 'Medical Images'>('Dental Chart');
+  const [activeTab, setActiveTab] = useState<'Overview' | 'Dental Chart' | 'Visits' | 'Medical Images' | 'Prescriptions'>('Dental Chart');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [visitToDelete, setVisitToDelete] = useState<string | null>(null);
+  const [isPrescriptionModalOpen, setIsPrescriptionModalOpen] = useState<boolean>(false);
+  const [activePrescriptionForPrint, setActivePrescriptionForPrint] = useState<Prescription | null>(null);
+  const [prescriptionToDelete, setPrescriptionToDelete] = useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -195,6 +206,18 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
         {/* Header Actions - Doctors only for clinical edits */}
         {!isReadOnly && (
           <div className="flex flex-wrap gap-2.5">
+            <button
+              onClick={() => {
+                setActivePrescriptionForPrint(null);
+                setIsPrescriptionModalOpen(true);
+              }}
+              className="px-4 py-2 bg-[#006194] hover:bg-[#004b73] text-white rounded-xl transition-colors text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+              title={isRTL ? "إصدار وطباعة روشتة طبية للمريض" : "Print Prescription"}
+            >
+              <span className="material-symbols-outlined text-[16px]">receipt_long</span>
+              <span>{isRTL ? "طباعة روشتة" : "Print Prescription"}</span>
+            </button>
+
             {onScheduleVisit && (
               <button
                 onClick={() => onScheduleVisit(patient)}
@@ -229,11 +252,11 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
 
       {/* Profile Tabs */}
       <div className="border-b border-[#e2e8f0] dark:border-slate-800 mb-6 flex gap-6 md:gap-8 overflow-x-auto text-sm font-semibold">
-        {(['Overview', 'Dental Chart', 'Visits', 'Medical Images'] as const).map((tab) => (
+        {(['Overview', 'Dental Chart', 'Visits', 'Medical Images', 'Prescriptions'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`pb-3.5 border-b-2 transition-colors whitespace-nowrap cursor-pointer ${
+            className={`pb-3.5 border-b-2 transition-colors whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
               activeTab === tab
                 ? 'border-[#006194] dark:border-[#00a3e0] text-[#006194] dark:text-[#00a3e0] font-bold'
                 : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -243,6 +266,17 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
             {tab === 'Dental Chart' && t('dental_chart')}
             {tab === 'Visits' && t('visits_and_schedule')}
             {tab === 'Medical Images' && t('medical_images_xrays')}
+            {tab === 'Prescriptions' && (
+              <>
+                <span className="material-symbols-outlined text-[18px]">receipt_long</span>
+                <span>{isRTL ? "الروشتات الطبية" : "Prescriptions"}</span>
+                {patient.prescriptions && patient.prescriptions.length > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[#006194] text-white font-mono">
+                    {patient.prescriptions.length}
+                  </span>
+                )}
+              </>
+            )}
           </button>
         ))}
       </div>
@@ -575,6 +609,181 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
         </div>
       )}
 
+      {activeTab === 'Prescriptions' && (
+        <div className="bg-white dark:bg-slate-900 border border-[#e2e8f0] dark:border-slate-800 rounded-3xl p-6 shadow-xs">
+          <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-4 mb-6 flex-wrap gap-3">
+            <div>
+              <h3 className="font-headline font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                <span className="material-symbols-outlined text-[#006194] dark:text-[#00a3e0]">receipt_long</span>
+                <span>{isRTL ? "سجل الروشتات الطبية للمريض" : "Medical Prescriptions Dossier"}</span>
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {isRTL ? "جميع الوصفات الطبية الصادرة، توقيتات تناول الأدوية مع الأكل، والجرعات المعتمدة" : "Issued medical prescriptions, meal timing directions, and verified dosages"}
+              </p>
+            </div>
+
+            {!isReadOnly && (
+              <button
+                onClick={() => {
+                  setActivePrescriptionForPrint(null);
+                  setIsPrescriptionModalOpen(true);
+                }}
+                className="px-4 py-2 bg-[#006194] hover:bg-[#004b73] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 transition-colors"
+              >
+                <span className="material-symbols-outlined text-[16px]">add_circle</span>
+                <span>{isRTL ? "إصدار روشتة جديدة" : "New Prescription"}</span>
+              </button>
+            )}
+          </div>
+
+          {/* List of Prescriptions */}
+          <div className="space-y-4">
+            {(patient.prescriptions || []).map((rx) => (
+              <div
+                key={rx.id}
+                className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-[#f8fafc] dark:bg-slate-800/60 hover:border-slate-300 dark:hover:border-slate-700 transition-all flex flex-col gap-4 shadow-2xs"
+              >
+                {/* Top header of prescription card */}
+                <div className="flex items-start justify-between gap-3 flex-wrap border-b border-slate-200/80 dark:border-slate-700/80 pb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950 border border-blue-100 dark:border-blue-900 flex items-center justify-center text-[#006194] dark:text-[#00a3e0] shrink-0 font-serif font-black text-lg select-none">
+                      ℞
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-sm text-slate-900 dark:text-white">
+                          {isRTL ? "روشتة طبية معتمدة" : "Official Prescription"}
+                        </span>
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-[#006194]/10 text-[#006194] dark:text-[#00a3e0] border border-[#006194]/20">
+                          #{rx.id}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {isRTL ? "الطبيب المعالج" : "Doctor"}: <strong className="text-slate-700 dark:text-slate-300">{rx.doctorName}</strong> • {rx.date}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActivePrescriptionForPrint(rx);
+                        setIsPrescriptionModalOpen(true);
+                      }}
+                      className="px-3.5 py-1.5 bg-[#006194] hover:bg-[#004b73] text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">print</span>
+                      <span>{isRTL ? "عرض وطباعة" : "View & Print"}</span>
+                    </button>
+
+                    {!isReadOnly && (
+                      <button
+                        type="button"
+                        onClick={() => setPrescriptionToDelete(rx.id)}
+                        className="p-1.5 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
+                        title={isRTL ? "حذف الروشتة" : "Delete Prescription"}
+                      >
+                        <span className="material-symbols-outlined text-[18px]">delete</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Diagnosis if any */}
+                {rx.diagnosis && (
+                  <div className="px-3 py-1.5 bg-blue-50/70 dark:bg-blue-950/30 rounded-lg text-xs text-[#006194] dark:text-[#00a3e0] border-s-3 border-[#006194]">
+                    <strong>{isRTL ? "التشخيص" : "Diagnosis"}: </strong>
+                    <span className="text-slate-800 dark:text-slate-200">{rx.diagnosis}</span>
+                  </div>
+                )}
+
+                {/* Medications List */}
+                <div className="space-y-2">
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                    {isRTL ? "الأدوية المقررة والجرعات وتوقيت الأكل:" : "Prescribed medications & instructions:"}
+                  </span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                    {rx.items.map((item, i) => {
+                      const timingInfo = MEAL_TIMING_OPTIONS.find(o => o.value === item.timing);
+                      return (
+                        <div
+                          key={item.id || i}
+                          className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1.5"
+                        >
+                          <div className="flex items-start justify-between gap-1.5">
+                            <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                              {i + 1}. {item.medicineName}
+                            </h4>
+                            {item.durationDays && (
+                              <span className="text-[10px] font-semibold text-slate-500 shrink-0">
+                                {item.durationDays}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                            <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
+                              {item.frequency}
+                            </span>
+                            {timingInfo && (
+                              <span className={`px-2 py-0.5 rounded-md font-bold border ${timingInfo.color}`}>
+                                {isRTL ? timingInfo.labelAr : timingInfo.labelEn}
+                              </span>
+                            )}
+                          </div>
+
+                          {item.notes && (
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 italic">
+                              * {item.notes}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Instructions if any */}
+                {rx.instructions && (
+                  <p className="text-xs text-slate-600 dark:text-slate-400 bg-slate-100/70 dark:bg-slate-900/70 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800">
+                    <strong className="text-slate-800 dark:text-slate-200">{isRTL ? "إرشادات الطبيب:" : "Advice:"} </strong>
+                    {rx.instructions}
+                  </p>
+                )}
+              </div>
+            ))}
+
+            {(!patient.prescriptions || patient.prescriptions.length === 0) && (
+              <div className="text-center py-12 px-4 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                <span className="material-symbols-outlined text-4xl text-slate-300 dark:text-slate-600 mb-2">receipt_long</span>
+                <p className="font-headline font-bold text-sm text-slate-700 dark:text-slate-300">
+                  {isRTL ? "لا توجد روشتات مسجلة للمريض بعد" : "No prescriptions issued yet"}
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 mb-4">
+                  {isRTL 
+                    ? "يمكنك إصدار روشتة علاجية وتحديد مواعيد الجرعات وتوقيت تناول الأدوية بالنسبة للأكل وطباعتها مباشرة." 
+                    : "You can issue a new prescription with meal timings and dosages, then print it instantly."}
+                </p>
+                {!isReadOnly && (
+                  <button
+                    onClick={() => {
+                      setActivePrescriptionForPrint(null);
+                      setIsPrescriptionModalOpen(true);
+                    }}
+                    className="px-4 py-2 bg-[#006194] hover:bg-[#004b73] text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">add_circle</span>
+                    <span>{isRTL ? "إصدار أول روشتة للمريض" : "Issue First Prescription"}</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Delete Visit Confirmation Modal */}
       {visitToDelete && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
@@ -636,6 +845,64 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
               alt="Scan Fullview"
               className="max-w-full max-h-[80vh] object-contain rounded-xl border border-white/20 shadow-2xl"
             />
+          </div>
+        </div>
+      )}
+
+      {/* Prescription Modal */}
+      <PrescriptionModal
+        isOpen={isPrescriptionModalOpen}
+        onClose={() => {
+          setIsPrescriptionModalOpen(false);
+          setActivePrescriptionForPrint(null);
+        }}
+        patient={patient}
+        currentDoctor={currentDoctor}
+        onSavePrescription={(rx) => {
+          if (onSavePrescription) onSavePrescription(rx);
+          setIsPrescriptionModalOpen(false);
+          setActivePrescriptionForPrint(null);
+        }}
+        initialPrescription={activePrescriptionForPrint}
+      />
+
+      {/* Delete Prescription Confirmation Modal */}
+      {prescriptionToDelete && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white">
+            <div className="w-12 h-12 rounded-2xl bg-red-50 dark:bg-red-950/40 text-red-600 flex items-center justify-center mb-4 mx-auto border border-red-100 dark:border-red-900">
+              <span className="material-symbols-outlined text-2xl">delete_forever</span>
+            </div>
+            <h3 className="font-headline font-bold text-lg text-slate-900 dark:text-white text-center mb-1">
+              {isRTL ? "حذف الروشتة" : "Delete Prescription"}
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 text-center mb-6 leading-relaxed">
+              {isRTL
+                ? "هل أنت متأكد من رغبتك في حذف هذه الروشتة نهائياً؟ لا يمكن التراجع عن هذا الإجراء."
+                : "Are you sure you want to permanently delete this prescription? This action cannot be undone."}
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setPrescriptionToDelete(null)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                {isRTL ? "إلغاء" : "Cancel"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onDeletePrescription && prescriptionToDelete) {
+                    onDeletePrescription(prescriptionToDelete);
+                  }
+                  setPrescriptionToDelete(null);
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1"
+              >
+                <span className="material-symbols-outlined text-[16px]">delete</span>
+                <span>{isRTL ? "حذف" : "Delete"}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

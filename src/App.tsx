@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AppView, Patient, ToothStatus, ClinicRoom, VisitRecord, MedicalImage, DoctorProfile } from './types';
+import { AppView, Patient, ToothStatus, ClinicRoom, VisitRecord, MedicalImage, DoctorProfile, Prescription } from './types';
 import { INITIAL_PATIENTS, CLINIC_ROOMS, INITIAL_DOCTOR, DOCTORS_LIST } from './data/initialData';
 import { storage, subscribeToStorageUpdates } from './utils/storage';
 import { supabaseService } from './services/supabaseService';
@@ -22,7 +22,7 @@ import { CommandPalette } from './components/CommandPalette';
 import { ScheduleVisitModal } from './components/ScheduleVisitModal';
 import { SelectClinicModal } from './components/SelectClinicModal';
 import { useAppThemeLanguage } from './context/ThemeLanguageContext';
-import { formatDateISO } from './utils/dateUtils';
+import { formatDateISO, dateMatchesTargetDay } from './utils/dateUtils';
 
 export function App() {
   const { isRTL } = useAppThemeLanguage();
@@ -626,6 +626,112 @@ export function App() {
     );
   };
 
+  // Save Prescription to Patient
+  const handleSavePrescription = (patientId: string, prescription: Prescription) => {
+    setPatients((prev) =>
+      prev.map((p) => {
+        if (p.id === patientId) {
+          const existing = p.prescriptions || [];
+          const idx = existing.findIndex((rx) => rx.id === prescription.id);
+          const updated = idx >= 0
+            ? existing.map((rx) => (rx.id === prescription.id ? prescription : rx))
+            : [prescription, ...existing];
+          return { ...p, prescriptions: updated };
+        }
+        return p;
+      })
+    );
+  };
+
+  // Delete Prescription from Patient
+  const handleDeletePrescription = (patientId: string, prescriptionId: string) => {
+    setPatients((prev) =>
+      prev.map((p) => {
+        if (p.id === patientId) {
+          return {
+            ...p,
+            prescriptions: (p.prescriptions || []).filter((rx) => rx.id !== prescriptionId)
+          };
+        }
+        return p;
+      })
+    );
+  };
+
+  // Remove patient from today or specific day queue
+  const handleRemovePatientFromQueue = (
+    patientId: string,
+    targetDate: Date,
+    dayNames?: { arName: string; enName: string }
+  ) => {
+    const today = new Date();
+    const isTodayTarget =
+      targetDate.getDate() === today.getDate() &&
+      targetDate.getMonth() === today.getMonth() &&
+      targetDate.getFullYear() === today.getFullYear();
+
+    if (isTodayTarget) {
+      setCompletedQueueIds((prev) => prev.filter((id) => id !== patientId));
+    }
+
+    setPatients((prev) =>
+      prev.map((p) => {
+        if (p.id !== patientId) return p;
+
+        // Filter out visits that match targetDate
+        const remainingVisits = (p.visits || []).filter((v) => {
+          if (!v.date) return true;
+          return !dateMatchesTargetDay(v.date, targetDate, dayNames?.arName, dayNames?.enName);
+        });
+
+        // Check if nextVisit matches targetDate
+        let updatedNextVisit = p.nextVisit;
+        let updatedNextVisitTime = p.nextVisitTime;
+        if (p.nextVisit && dateMatchesTargetDay(p.nextVisit, targetDate, dayNames?.arName, dayNames?.enName)) {
+          const nextScheduled = remainingVisits.find((v) => v.status === 'scheduled');
+          if (nextScheduled) {
+            updatedNextVisit = nextScheduled.date;
+            updatedNextVisitTime = undefined;
+          } else {
+            updatedNextVisit = undefined;
+            updatedNextVisitTime = undefined;
+          }
+        }
+
+        // If today's queue: reset inClinic status and lastVisit if lastVisit was today
+        let updatedInClinic = p.inClinic;
+        let updatedInClinicTime = p.inClinicTime;
+        let updatedInClinicTimestamp = p.inClinicTimestamp;
+        let updatedInClinicOrder = p.inClinicOrder;
+        let updatedLastVisit = p.lastVisit;
+
+        if (isTodayTarget) {
+          updatedInClinic = false;
+          updatedInClinicTime = undefined;
+          updatedInClinicTimestamp = undefined;
+          updatedInClinicOrder = undefined;
+
+          if (p.lastVisit && dateMatchesTargetDay(p.lastVisit, targetDate, dayNames?.arName, dayNames?.enName)) {
+            const completedVisits = remainingVisits.filter((v) => v.status === 'completed');
+            updatedLastVisit = completedVisits.length > 0 ? completedVisits[0].date : 'No visits';
+          }
+        }
+
+        return {
+          ...p,
+          visits: remainingVisits,
+          nextVisit: updatedNextVisit,
+          nextVisitTime: updatedNextVisitTime,
+          inClinic: updatedInClinic,
+          inClinicTime: updatedInClinicTime,
+          inClinicTimestamp: updatedInClinicTimestamp,
+          inClinicOrder: updatedInClinicOrder,
+          lastVisit: updatedLastVisit
+        };
+      })
+    );
+  };
+
   // Add or Edit Patient
   const handleSavePatient = (savedPatient: Patient) => {
     setPatients((prev) => {
@@ -959,6 +1065,7 @@ export function App() {
                     onScheduleVisit={handleOpenScheduleVisit}
                     onAssignDoctor={handleAssignDoctor}
                     onVacateDoctor={handleVacateDoctor}
+                    onRemoveFromQueue={handleRemovePatientFromQueue}
                   />
                 )}
 
@@ -987,7 +1094,10 @@ export function App() {
                     onDeleteVisit={(visitId) => handleDeleteVisit(activePatient.id, visitId)}
                     onUploadImage={() => setIsUploadImageOpen(true)}
                     onEditPatient={() => handleOpenEditPatient(activePatient)}
+                    onSavePrescription={(rx) => handleSavePrescription(activePatient.id, rx)}
+                    onDeletePrescription={(rxId) => handleDeletePrescription(activePatient.id, rxId)}
                     isReadOnly={false}
+                    currentDoctor={doctorProfile}
                   />
                 )}
 
